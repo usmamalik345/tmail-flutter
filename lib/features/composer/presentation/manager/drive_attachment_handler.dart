@@ -9,8 +9,8 @@ import 'package:workplace/presentation/model/drive_pick_state.dart';
 /// Inserts [html] into the composer's editor.
 typedef InsertHtmlCallback = Future<void> Function(String html);
 
-/// Starts drive transfers for [docs], returning whether it took them.
-typedef StartDriveTransfersCallback = Future<bool> Function(List<DriveDocument> docs);
+/// Transfers [docs] as real attachments, returning whether it took them.
+typedef TransferDriveDocumentsCallback = Future<bool> Function(List<DriveDocument> docs);
 
 class DriveAttachmentHandler {
   DriveAttachmentHandler();
@@ -23,15 +23,13 @@ class DriveAttachmentHandler {
   /// Splits picked documents by how they can be attached and dispatches each
   /// half.
   ///
-  /// [startDriveTransfers] downloads and attaches the documents that carry
-  /// only a `downloadLink`, returning whether it took them. It declines on
-  /// platforms with no staging strategy, and those documents then fall back to
-  /// the "not available yet" message — the same behaviour as before drive
-  /// transfers existed.
+  /// [transferDriveDocuments] downloads and attaches the documents that carry
+  /// only a `downloadLink`. It declines on platforms with no staging strategy,
+  /// and those documents then fall back to the "not available yet" message.
   Future<void> handleDrivePickResult(
     List<DriveDocument> result, {
     required InsertHtmlCallback insertHtml,
-    required StartDriveTransfersCallback startDriveTransfers,
+    required TransferDriveDocumentsCallback transferDriveDocuments,
     AppLocalizations? appLocalizations,
   }) async {
     if (result.isEmpty) {
@@ -62,7 +60,7 @@ class DriveAttachmentHandler {
     }
 
     final transfersStarted = downloadableDocs.isNotEmpty &&
-        await startDriveTransfers(downloadableDocs);
+        await transferDriveDocuments(downloadableDocs);
 
     if (linkDocs.isEmpty && !transfersStarted) {
       getBinding<ToastManager>()?.showMessageFailure(DrivePickFailure(

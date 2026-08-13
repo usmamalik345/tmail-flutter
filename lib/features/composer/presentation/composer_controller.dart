@@ -1048,7 +1048,7 @@ class ComposerController extends BaseController
         },
         // Closure, not a tear-off: keeps the pipeline's GetX lookups out of
         // link-only picks, which never reach it.
-        startDriveTransfers: (docs) => _driveTransferPipeline.transfer(docs),
+        transferDriveDocuments: (docs) => _driveTransferPipeline.transfer(docs),
         appLocalizations: currentContext != null ? AppLocalizations.of(currentContext!) : null,
       );
     } catch (e) {

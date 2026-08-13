@@ -22,7 +22,7 @@ void main() {
   /// Stands in for the drive-transfer pipeline: records what it was handed and
   /// answers whether it took the documents, the way a platform with no staging
   /// strategy declines them.
-  Future<bool> startDriveTransfers(List<DriveDocument> docs) async {
+  Future<bool> transferDriveDocuments(List<DriveDocument> docs) async {
     transferredDocs.add(docs);
     return transfersAccepted;
   }
@@ -45,7 +45,7 @@ void main() {
     test('Should insert link html for docs with sharingLink', () async {
       await handler.handleDrivePickResult([
         linkDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers, appLocalizations: appLocalizations);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(insertedHtml, hasLength(1));
       expect(insertedHtml.first, contains('https://drive.example.com/report'));
@@ -56,7 +56,7 @@ void main() {
     test('Should still work and fall back to hardcoded English label when appLocalizations is omitted', () async {
       await handler.handleDrivePickResult([
         linkDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments);
 
       expect(insertedHtml, hasLength(1));
       expect(insertedHtml.first, contains('Open in drive'));
@@ -74,7 +74,7 @@ void main() {
 
       await handler.handleDrivePickResult([
         bothLinksDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers, appLocalizations: appLocalizations);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(insertedHtml, hasLength(1));
       expect(insertedHtml.first, contains('https://drive.example.com/both'));
@@ -83,7 +83,7 @@ void main() {
     test('Should show download-only toast and not insert html when doc has neither sharingLink nor downloadLink', () async {
       await handler.handleDrivePickResult([
         noLinkDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers, appLocalizations: appLocalizations);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(insertedHtml, isEmpty);
       verify(mockToastManager.showMessageFailure(any)).called(1);
@@ -94,7 +94,7 @@ void main() {
         linkDoc,
         attachmentDoc,
         noLinkDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers, appLocalizations: appLocalizations);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(insertedHtml, hasLength(1));
       expect(insertedHtml.first, contains('Report'));
@@ -109,7 +109,7 @@ void main() {
       await handler.handleDrivePickResult([
         linkDoc,
         attachmentDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers, appLocalizations: appLocalizations);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(transferredDocs, hasLength(1));
       expect(transferredDocs.single, [attachmentDoc]);
@@ -120,7 +120,7 @@ void main() {
 
       await handler.handleDrivePickResult([
         attachmentDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers, appLocalizations: appLocalizations);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(insertedHtml, isEmpty);
       verifyNever(mockToastManager.showMessageFailure(any));
@@ -139,7 +139,7 @@ void main() {
 
       await handler.handleDrivePickResult([
         bothLinksDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers, appLocalizations: appLocalizations);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(insertedHtml, hasLength(1));
       expect(transferredDocs, isEmpty);
@@ -148,7 +148,7 @@ void main() {
     test('Should not call the transfer starter when no doc is download-only', () async {
       await handler.handleDrivePickResult([
         linkDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers, appLocalizations: appLocalizations);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(transferredDocs, isEmpty);
     });
@@ -158,7 +158,7 @@ void main() {
     test('Should show toast with driveAttachmentInDevelopment message when all docs are download-only', () async {
       await handler.handleDrivePickResult([
         attachmentDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers, appLocalizations: appLocalizations);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(insertedHtml, isEmpty);
       final captured = verify(
@@ -173,7 +173,7 @@ void main() {
       await handler.handleDrivePickResult(
         [],
         insertHtml: (html) async => insertedHtml.add(html),
-        startDriveTransfers: startDriveTransfers,
+        transferDriveDocuments: transferDriveDocuments,
         appLocalizations: appLocalizations,
       );
 
@@ -184,7 +184,7 @@ void main() {
     test('Should show toast with null message when appLocalizations is omitted', () async {
       await handler.handleDrivePickResult([
         attachmentDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments);
 
       expect(insertedHtml, isEmpty);
       final captured = verify(
@@ -199,7 +199,7 @@ void main() {
       await handler.handleDrivePickResult([
         attachmentDoc,
         linkDoc,
-      ], insertHtml: (html) async => insertedHtml.add(html), startDriveTransfers: startDriveTransfers, appLocalizations: appLocalizations);
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(insertedHtml, hasLength(1));
       verifyNever(mockToastManager.showMessageFailure(any));
