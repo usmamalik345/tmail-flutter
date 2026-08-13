@@ -8,10 +8,10 @@ import 'package:dio/dio.dart';
 import 'package:model/email/attachment.dart';
 import 'package:model/upload/file_info.dart';
 import 'package:tmail_ui_user/features/composer/presentation/manager/bounded_concurrency_runner.dart';
+import 'package:tmail_ui_user/features/composer/presentation/manager/drive_document_transfer_runner.dart';
 import 'package:tmail_ui_user/features/upload/data/network/file_uploader.dart';
 import 'package:tmail_ui_user/features/upload/domain/model/upload_task_id.dart';
 import 'package:tmail_ui_user/features/upload/domain/state/attachment_upload_state.dart';
-import 'package:tmail_ui_user/features/upload/presentation/controller/upload_controller.dart';
 import 'package:tmail_ui_user/features/upload/presentation/validator/attachment_upload_validation_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:workplace/data/datasource/drive_transfer/drive_transfer_strategy.dart';
@@ -24,10 +24,6 @@ import 'package:workplace/domain/entity/drive_document.dart';
 /// there is none yet.
 typedef ResolveUploadUri = Uri? Function();
 
-/// Resolves the `Authorization` header for the current session, or null when
-/// there is none to send.
-typedef ResolveAuthHeader = String? Function();
-
 /// Downloads drive documents into platform temp storage and uploads them as
 /// real attachments, one bounded-concurrency pipeline per batch.
 ///
@@ -37,30 +33,27 @@ typedef ResolveAuthHeader = String? Function();
 class DriveTransferPipeline {
   DriveTransferPipeline({
     required AttachmentUploadValidationService validationService,
-    required UploadController uploadController,
     required FileUploader fileUploader,
     required Uuid uuid,
     required DriveTransferStrategyFactory strategyFactory,
+    required DriveDocumentTransferRunner transferRunner,
     required ResolveUploadUri resolveUploadUri,
-    required ResolveAuthHeader resolveAuthHeader,
   })  : _validationService = validationService,
-        _uploadController = uploadController,
         _fileUploader = fileUploader,
         _uuid = uuid,
         _strategyFactory = strategyFactory,
-        _resolveUploadUri = resolveUploadUri,
-        _resolveAuthHeader = resolveAuthHeader;
+        _transferRunner = transferRunner,
+        _resolveUploadUri = resolveUploadUri;
 
   final AttachmentUploadValidationService _validationService;
-  final UploadController _uploadController;
   final FileUploader _fileUploader;
   final Uuid _uuid;
+  final DriveDocumentTransferRunner _transferRunner;
 
   /// App-wide singleton from `CoreBindings`: it caches capability detection
   /// and sweeps stale staging once, so it outlives any one composer.
   final DriveTransferStrategyFactory _strategyFactory;
   final ResolveUploadUri _resolveUploadUri;
-  final ResolveAuthHeader _resolveAuthHeader;
 
   /// Returns whether this pipeline took responsibility for [docs]. `false`
   /// means nothing was attempted — no staging strategy on this platform, or
@@ -113,58 +106,12 @@ class DriveTransferPipeline {
     return runWithConcurrency(
       docs,
       strategy.maxConcurrentTransfers,
-      (doc) => _transferOne(doc, uploadUri, strategy),
-    );
-  }
-
-  Future<void> _transferOne(
-    DriveDocument doc,
-    Uri uploadUri,
-    DriveTransferStrategy<StagedDriveFile> strategy,
-  ) async {
-    final taskId = UploadTaskId(_uuid.v4());
-    final cancelToken = CancelToken();
-
-    _uploadController.addDownloadingPlaceholder(
-      taskId: taskId,
-      fileName: doc.name,
-      fileSize: doc.size,
-      mimeType: doc.mimeType,
-      cancelToken: cancelToken,
-    );
-
-    try {
-      final attachment = await strategy.transfer(DriveTransferRequest(
+      (doc) => _transferRunner.run(
         doc: doc,
         uploadUri: uploadUri,
-        authHeader: _resolveAuthHeader() ?? '',
-        onDownloadProgress: (received, total) => _uploadController.updateDownloadProgress(
-          taskId: taskId,
-          received: received,
-          total: total,
-        ),
-        onUploadProgress: (sent, total) => _uploadController.updateUploadProgress(
-          taskId: taskId,
-          sent: sent,
-          total: total,
-        ),
-        cancelToken: cancelToken,
-      ));
-      _uploadController.completeUploadedFile(
-        taskId: taskId,
-        attachment: attachment,
-      );
-    } catch (error) {
-      // A failing file drops its own chip and nothing else: an expired link or
-      // a cancelled transfer must not take its siblings down with it.
-      logWarning('DriveTransferPipeline::_transferOne(${doc.name}): $error');
-      if (cancelToken.isCancelled) {
-        // The user asked for this one to stop, so no error toast.
-        _uploadController.deleteFileUploaded(taskId);
-      } else {
-        _uploadController.failDriveTransfer(taskId);
-      }
-    }
+        strategy: strategy,
+      ),
+    );
   }
 
   /// Uploads a staged file whose bytes live in memory or on disk through the

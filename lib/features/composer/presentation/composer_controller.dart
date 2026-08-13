@@ -128,6 +128,7 @@ import 'package:tmail_ui_user/features/upload/domain/state/local_image_picker_st
 import 'package:tmail_ui_user/features/upload/domain/usecases/local_file_picker_interactor.dart';
 import 'package:tmail_ui_user/features/upload/domain/usecases/local_image_picker_interactor.dart';
 import 'package:tmail_ui_user/features/upload/presentation/controller/upload_controller.dart';
+import 'package:tmail_ui_user/features/composer/presentation/manager/drive_document_transfer_runner.dart';
 import 'package:tmail_ui_user/features/composer/presentation/manager/drive_transfer_pipeline.dart';
 import 'package:tmail_ui_user/features/upload/data/network/file_uploader.dart';
 import 'package:tmail_ui_user/features/upload/presentation/validator/attachment_upload_validation_service.dart';
@@ -202,12 +203,15 @@ class ComposerController extends BaseController
 
   late final DriveTransferPipeline _driveTransferPipeline = DriveTransferPipeline(
     validationService: attachmentUploadValidationService,
-    uploadController: uploadController,
     fileUploader: Get.find<FileUploader>(),
     uuid: Get.find<Uuid>(),
     strategyFactory: Get.find<DriveTransferStrategyFactory>(),
+    transferRunner: DriveDocumentTransferRunner(
+      uploadController: uploadController,
+      uuid: Get.find<Uuid>(),
+      resolveAuthHeader: () => authorizationInterceptors.currentAuthorizationHeader,
+    ),
     resolveUploadUri: _getCurrentUploadUri,
-    resolveAuthHeader: () => authorizationInterceptors.currentAuthorizationHeader,
   );
 
   GetAllAutoCompleteInteractor? _getAllAutoCompleteInteractor;
