@@ -3,6 +3,14 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tmail_ui_user/features/composer/presentation/manager/bounded_concurrency_runner.dart';
 
+/// Completes every completer that is still pending, on a snapshot of the list
+/// so a task started by one completion cannot mutate it mid-iteration.
+void _completePending(List<Completer<void>> completers) {
+  for (final completer in List.of(completers)) {
+    if (!completer.isCompleted) completer.complete();
+  }
+}
+
 void main() {
   group('runWithConcurrency::', () {
     test('Should process every item exactly once', () async {
@@ -58,23 +66,13 @@ void main() {
       // Release the current tasks so the workers can pick up
       // the next items.
       while (completers.length < itemCount) {
-        final pending = completers
-            .where((completer) => !completer.isCompleted)
-            .toList();
-
-        for (final completer in pending) {
-          completer.complete();
-        }
+        _completePending(completers);
 
         await Future<void>.delayed(Duration.zero);
       }
 
       // Release the final wave.
-      for (final completer in completers) {
-        if (!completer.isCompleted) {
-          completer.complete();
-        }
-      }
+      _completePending(completers);
 
       await run;
 
