@@ -138,5 +138,44 @@ void main() {
 
       expect(processed, [0, 1]);
     });
+
+    test('Should complete when items are empty', () async {
+      var taskCalled = false;
+
+      await runWithConcurrency(
+        <int>[],
+        3,
+        (item) async {
+          taskCalled = true;
+        },
+      );
+
+      expect(taskCalled, isFalse);
+    });
+
+    test('Should treat negative concurrency as a single worker', () async {
+      final processed = <int>[];
+
+      await runWithConcurrency(
+        [0, 1, 2],
+        -1,
+        (item) async => processed.add(item),
+      );
+
+      expect(processed, [0, 1, 2]);
+    });
+
+    test('Should process all items when maxConcurrent exceeds item count', () async {
+      final processed = <int>[];
+
+      await runWithConcurrency(
+        [0, 1, 2],
+        100,
+        (item) async => processed.add(item),
+      );
+
+      expect(processed, containsAllInOrder([0, 1, 2]));
+      expect(processed, hasLength(3));
+    });
   });
 }
