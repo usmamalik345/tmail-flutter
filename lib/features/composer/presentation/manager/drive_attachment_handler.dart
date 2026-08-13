@@ -51,23 +51,26 @@ class DriveAttachmentHandler {
         .where((doc) => doc.sharingLink == null && doc.downloadLink != null)
         .toList();
 
+    // A pick with any link doc is handled as a link pick: mixed batches are
+    // not supported.
     if (linkDocs.isNotEmpty) {
       await insertDriveLinkHtml(
         linkDocs,
         insertHtml: insertHtml,
         appLocalizations: appLocalizations,
       );
+      return;
     }
 
-    final transfersStarted = downloadableDocs.isNotEmpty &&
-        await transferDriveDocuments(downloadableDocs);
-
-    if (linkDocs.isEmpty && !transfersStarted) {
-      getBinding<ToastManager>()?.showMessageFailure(DrivePickFailure(
-        Exception(),
-        message: appLocalizations?.driveAttachmentInDevelopment,
-      ));
+    if (downloadableDocs.isNotEmpty &&
+        await transferDriveDocuments(downloadableDocs)) {
+      return;
     }
+
+    getBinding<ToastManager>()?.showMessageFailure(DrivePickFailure(
+      Exception(),
+      message: appLocalizations?.driveAttachmentInDevelopment,
+    ));
   }
 
   Future<void> insertDriveLinkHtml(

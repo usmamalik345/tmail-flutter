@@ -107,12 +107,23 @@ void main() {
       transfersAccepted = true;
 
       await handler.handleDrivePickResult([
-        linkDoc,
         attachmentDoc,
       ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
 
       expect(transferredDocs, hasLength(1));
       expect(transferredDocs.single, [attachmentDoc]);
+    });
+
+    test('Should insert link html and start no transfer for a mixed pick', () async {
+      transfersAccepted = true;
+
+      await handler.handleDrivePickResult([
+        linkDoc,
+        attachmentDoc,
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
+
+      expect(insertedHtml, hasLength(1));
+      expect(transferredDocs, isEmpty);
     });
 
     test('Should not show the in-development toast when transfers are taken', () async {
