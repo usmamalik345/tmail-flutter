@@ -10,15 +10,20 @@ Future<void> runWithConcurrency<T>(
   Iterable<T> items,
   int maxConcurrent,
   Future<void> Function(T item) task,
-) async {
+) {
   final iterator = items.iterator;
-
-  Future<void> worker() async {
-    while (iterator.moveNext()) {
-      await task(iterator.current);
-    }
-  }
-
   final workerCount = maxConcurrent < 1 ? 1 : maxConcurrent;
-  await Future.wait(List.generate(workerCount, (_) => worker()));
+  return Future.wait(
+    List.generate(workerCount, (_) => _drainQueue(iterator, task)),
+  );
+}
+
+/// One worker: pulls from the shared [iterator] until it is exhausted.
+Future<void> _drainQueue<T>(
+  Iterator<T> iterator,
+  Future<void> Function(T item) task,
+) async {
+  while (iterator.moveNext()) {
+    await task(iterator.current);
+  }
 }
