@@ -136,6 +136,7 @@ import 'package:tmail_ui_user/main/exceptions/remote/authentication_exception.da
 import 'package:tmail_ui_user/main/localizations/app_localizations.dart';
 import 'package:tmail_ui_user/main/routes/route_navigation.dart';
 import 'package:tmail_ui_user/main/universal_import/html_stub.dart' as html;
+import 'package:workplace/data/datasource/drive_transfer/drive_transfer_strategy_factory.dart';
 import 'package:workplace/domain/entity/drive_document.dart';
 import 'package:tmail_ui_user/features/composer/presentation/manager/drive_attachment_handler.dart';
 import 'package:tmail_ui_user/main/utils/app_config.dart';
@@ -204,6 +205,7 @@ class ComposerController extends BaseController
     uploadController: uploadController,
     fileUploader: Get.find<FileUploader>(),
     uuid: Get.find<Uuid>(),
+    strategyFactory: Get.find<DriveTransferStrategyFactory>(),
     resolveUploadUri: _getCurrentUploadUri,
     resolveAuthHeader: () => authorizationInterceptors.currentAuthorizationHeader,
   );

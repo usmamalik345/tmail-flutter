@@ -24,6 +24,7 @@ import 'package:tmail_ui_user/main/utils/ios_notification_manager.dart';
 import 'package:tmail_ui_user/main/utils/toast_manager.dart';
 import 'package:tmail_ui_user/main/utils/twake_app_manager.dart';
 import 'package:uuid/uuid.dart';
+import 'package:workplace/data/datasource/drive_transfer/drive_transfer_strategy_factory.dart';
 
 class CoreBindings extends Bindings {
 
@@ -39,6 +40,7 @@ class CoreBindings extends Bindings {
     _bindingIsolate();
     _bindingStorage();
     _bindingDriveAttachmentHandler();
+    _bindingDriveTransferStrategyFactory();
   }
 
   void _bindingAppImagePaths() {
@@ -51,6 +53,14 @@ class CoreBindings extends Bindings {
 
   void _bindingDriveAttachmentHandler() {
     Get.put(DriveAttachmentHandler());
+  }
+
+  /// One per app: the factory caches capability detection and sweeps stale
+  /// staging once per instance. Not `const`: only the mobile branch of the
+  /// conditional export has a const constructor.
+  void _bindingDriveTransferStrategyFactory() {
+    // ignore: prefer_const_constructors
+    Get.put(DriveTransferStrategyFactory());
   }
 
   Future _bindingSharePreference() async {

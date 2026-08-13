@@ -40,12 +40,14 @@ class DriveTransferPipeline {
     required UploadController uploadController,
     required FileUploader fileUploader,
     required Uuid uuid,
+    required DriveTransferStrategyFactory strategyFactory,
     required ResolveUploadUri resolveUploadUri,
     required ResolveAuthHeader resolveAuthHeader,
   })  : _validationService = validationService,
         _uploadController = uploadController,
         _fileUploader = fileUploader,
         _uuid = uuid,
+        _strategyFactory = strategyFactory,
         _resolveUploadUri = resolveUploadUri,
         _resolveAuthHeader = resolveAuthHeader;
 
@@ -53,16 +55,12 @@ class DriveTransferPipeline {
   final UploadController _uploadController;
   final FileUploader _fileUploader;
   final Uuid _uuid;
+
+  /// App-wide singleton from `CoreBindings`: it caches capability detection
+  /// and sweeps stale staging once, so it outlives any one composer.
+  final DriveTransferStrategyFactory _strategyFactory;
   final ResolveUploadUri _resolveUploadUri;
   final ResolveAuthHeader _resolveAuthHeader;
-
-  /// Held for this pipeline's lifetime: the factory caches its capability
-  /// detection and runs the stale-staging sweep once per instance.
-  ///
-  /// Not `const`: only the mobile branch of the conditional export has a const
-  /// constructor, which is the only branch the analyzer sees.
-  // ignore: prefer_const_constructors
-  final DriveTransferStrategyFactory _strategyFactory = DriveTransferStrategyFactory();
 
   /// Returns whether this pipeline took responsibility for [docs]. `false`
   /// means nothing was attempted — no staging strategy on this platform, or
