@@ -8,9 +8,11 @@ import 'package:dio/dio.dart';
 import 'package:model/email/attachment.dart';
 import 'package:model/upload/file_info.dart';
 import 'package:tmail_ui_user/features/composer/presentation/manager/bounded_concurrency_runner.dart';
+import 'package:tmail_ui_user/features/composer/presentation/manager/drive_transfer_byte_guard.dart';
 import 'package:tmail_ui_user/features/upload/data/network/file_uploader.dart';
 import 'package:tmail_ui_user/features/upload/domain/model/upload_task_id.dart';
 import 'package:tmail_ui_user/features/upload/domain/state/attachment_upload_state.dart';
+import 'package:tmail_ui_user/features/upload/domain/validator/attachment_upload_state_source.dart';
 import 'package:tmail_ui_user/features/upload/presentation/controller/upload_controller.dart';
 import 'package:tmail_ui_user/features/upload/presentation/validator/attachment_upload_validation_service.dart';
 import 'package:uuid/uuid.dart';
@@ -28,12 +30,14 @@ import 'package:workplace/domain/entity/drive_document.dart';
 class DriveTransferPipeline {
   DriveTransferPipeline({
     required AttachmentUploadValidationService validationService,
+    required AttachmentUploadStateSource stateSource,
     required UploadController uploadController,
     required FileUploader fileUploader,
     required Uuid uuid,
     required Uri? Function() resolveUploadUri,
     required String? Function() resolveAuthHeader,
   })  : _validationService = validationService,
+        _stateSource = stateSource,
         _uploadController = uploadController,
         _fileUploader = fileUploader,
         _uuid = uuid,
@@ -41,6 +45,7 @@ class DriveTransferPipeline {
         _resolveAuthHeader = resolveAuthHeader;
 
   final AttachmentUploadValidationService _validationService;
+  final AttachmentUploadStateSource _stateSource;
   final UploadController _uploadController;
   final FileUploader _fileUploader;
   final Uuid _uuid;
@@ -103,20 +108,37 @@ class DriveTransferPipeline {
     Uri uploadUri,
     DriveTransferStrategy<StagedDriveFile> strategy,
   ) {
+    // Declared sizes come from the backend and can lie — export-on-demand
+    // documents may report 0 — so the bytes actually received are budgeted
+    // too, shared across the whole batch.
+    final byteGuard = DriveTransferByteGuard(budgetBytes: _remainingBudgetBytes());
+
     return runWithConcurrency(
       docs,
       strategy.maxConcurrentTransfers,
-      (doc) => _transferOne(doc, uploadUri, strategy),
+      (doc) => _transferOne(doc, uploadUri, strategy, byteGuard),
     );
+  }
+
+  /// What the server cap leaves for this batch, or null when the server
+  /// advertises no cap — in which case the guard applies its own fallback
+  /// budget rather than letting the batch run unbounded.
+  int? _remainingBudgetBytes() {
+    final hardLimitBytes = _stateSource.hardLimitBytes;
+    if (hardLimitBytes == null) return null;
+    final remaining = hardLimitBytes - _stateSource.currentAllAttachmentBytes;
+    return remaining < 0 ? 0 : remaining;
   }
 
   Future<void> _transferOne(
     DriveDocument doc,
     Uri uploadUri,
     DriveTransferStrategy<StagedDriveFile> strategy,
+    DriveTransferByteGuard byteGuard,
   ) async {
     final taskId = UploadTaskId(_uuid.v4());
     final cancelToken = CancelToken();
+    final progress = byteGuard.trackFile();
 
     _uploadController.addDownloadingPlaceholder(
       taskId: taskId,
@@ -131,11 +153,14 @@ class DriveTransferPipeline {
         doc: doc,
         uploadUri: uploadUri,
         authHeader: _resolveAuthHeader() ?? '',
-        onDownloadProgress: (received, total) => _uploadController.updateDownloadProgress(
-          taskId: taskId,
-          received: received,
-          total: total,
-        ),
+        onDownloadProgress: (received, total) {
+          progress.record(received);
+          _uploadController.updateDownloadProgress(
+            taskId: taskId,
+            received: received,
+            total: total,
+          );
+        },
         onUploadProgress: (sent, total) => _uploadController.updateUploadProgress(
           taskId: taskId,
           sent: sent,

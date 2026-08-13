@@ -38,3 +38,19 @@ class DriveDownloadIncompleteException implements Exception {
   String toString() =>
       'DriveDownloadIncompleteException: received $received of $expected bytes';
 }
+
+/// The bytes a batch actually received passed the budget its declared sizes
+/// were checked against — the backend under-reported at least one document.
+class DriveTransferBudgetExceededException implements Exception {
+  final int receivedBytes;
+  final int budgetBytes;
+
+  DriveTransferBudgetExceededException({
+    required this.receivedBytes,
+    required this.budgetBytes,
+  });
+
+  @override
+  String toString() =>
+      'DriveTransferBudgetExceededException: received $receivedBytes of $budgetBytes allowed bytes';
+}

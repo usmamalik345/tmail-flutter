@@ -191,16 +191,22 @@ class ComposerController extends BaseController
   final ComposerArguments? composerArgs;
   final SaveTemplateEmailInteractor _saveTemplateEmailInteractor;
 
+  /// Shared, not built twice: the drive pipeline budgets against the same
+  /// totals and server cap the validator checks.
+  late final ComposerAttachmentUploadStateSource _attachmentUploadStateSource =
+      ComposerAttachmentUploadStateSource.fromServerCapability(
+        uploadController: uploadController,
+        maxSizeAttachmentsPerEmail: () => mailboxDashBoardController.maxSizeAttachmentsPerEmail?.value,
+      );
+
   late AttachmentUploadValidationService attachmentUploadValidationService =
       AttachmentUploadValidationService(
-        stateSource: ComposerAttachmentUploadStateSource.fromServerCapability(
-          uploadController: uploadController,
-          maxSizeAttachmentsPerEmail: () => mailboxDashBoardController.maxSizeAttachmentsPerEmail?.value,
-        ),
+        stateSource: _attachmentUploadStateSource,
       );
 
   late final DriveTransferPipeline _driveTransferPipeline = DriveTransferPipeline(
     validationService: attachmentUploadValidationService,
+    stateSource: _attachmentUploadStateSource,
     uploadController: uploadController,
     fileUploader: Get.find<FileUploader>(),
     uuid: Get.find<Uuid>(),

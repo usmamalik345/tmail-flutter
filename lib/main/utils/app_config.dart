@@ -9,6 +9,9 @@ class AppConfig {
 
   static const int defaultMinInputLengthAutocomplete = 3;
   static const int warningAttachmentFileSizeInMegabytes = 10;
+  /// Runaway-download guard for drive transfers when the server advertises no
+  /// `maxSizeAttachmentsPerEmail`. Used only by [DriveTransferByteGuard].
+  static const int fallbackMaxAttachmentsPerEmailInMegabytes = 20;
   static const int defaultLimitAutocomplete = 8;
 
   static const String appDashboardConfigurationPath = "configurations/app_dashboard.json";
