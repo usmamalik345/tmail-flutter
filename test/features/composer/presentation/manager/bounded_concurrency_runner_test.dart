@@ -105,14 +105,24 @@ void main() {
 
     test('Should keep other workers running when one task throws', () async {
       final processed = <int>[];
+      final worker1Started = Completer<void>();
 
       await expectLater(
         runWithConcurrency(
           [0, 1, 2, 3],
           2,
           (item) async {
-            if (item == 0) throw StateError('boom');
-            processed.add(item);
+            if (item == 0) {
+              worker1Started.complete();
+              throw StateError('boom');
+            }
+
+            if (item == 1) {
+              processed.add(item);
+              await worker1Started.future;
+            } else {
+              processed.add(item);
+            }
           },
         ),
         throwsA(isA<StateError>()),
