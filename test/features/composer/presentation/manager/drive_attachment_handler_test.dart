@@ -164,6 +164,42 @@ void main() {
 
       expect(transferredDocs, isEmpty);
     });
+
+    test('Should not hand a non-https download link to the transfer starter when https is required', () async {
+      transfersAccepted = true;
+      final httpsRequiredHandler = _HttpsRequiredHandler();
+      final httpDownloadDoc = DriveDocument(
+        id: '6',
+        name: 'Insecure.jpg',
+        size: 200,
+        mimeType: 'image/jpeg',
+        downloadLink: Uri.parse('http://drive.example.com/insecure.jpg'),
+      );
+
+      await httpsRequiredHandler.handleDrivePickResult([
+        httpDownloadDoc,
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
+
+      expect(transferredDocs, isEmpty);
+      expect(insertedHtml, isEmpty);
+      final captured = verify(
+        mockToastManager.showMessageFailure(captureAny),
+      ).captured;
+      final failure = captured.single as DrivePickFailure;
+      expect(failure.message, equals(appLocalizations.driveAttachmentInDevelopment));
+    });
+
+    test('Should still hand an https download link to the transfer starter when https is required', () async {
+      transfersAccepted = true;
+      final httpsRequiredHandler = _HttpsRequiredHandler();
+
+      await httpsRequiredHandler.handleDrivePickResult([
+        attachmentDoc,
+      ], insertHtml: (html) async => insertedHtml.add(html), transferDriveDocuments: transferDriveDocuments, appLocalizations: appLocalizations);
+
+      expect(transferredDocs.single, [attachmentDoc]);
+      verifyNever(mockToastManager.showMessageFailure(any));
+    });
   });
 
   group('DriveAttachmentHandler::handleDrivePickResult::download-only toast::', () {
@@ -255,4 +291,11 @@ void main() {
       expect(caughtError, isA<StateError>());
     });
   });
+}
+
+/// Stands in for a release build: tests run in debug, where
+/// [DriveAttachmentHandler.requireHttps] is false and the scheme gate never fires.
+class _HttpsRequiredHandler extends DriveAttachmentHandler {
+  @override
+  bool get requireHttps => true;
 }

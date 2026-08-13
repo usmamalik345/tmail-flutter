@@ -47,9 +47,12 @@ class DriveAttachmentHandler {
     }).toList();
     // Exclusive with linkDocs by construction: a document carrying both links
     // is a link, because a live document is worth more than a static copy.
-    final downloadableDocs = result
-        .where((doc) => doc.sharingLink == null && doc.downloadLink != null)
-        .toList();
+    final downloadableDocs = result.where((doc) {
+      final downloadLink = doc.downloadLink;
+      return doc.sharingLink == null &&
+          downloadLink != null &&
+          (!requireHttps || downloadLink.isScheme('https'));
+    }).toList();
 
     // Both halves are dispatched: a mixed pick inserts its links and transfers
     // its downloadable docs.
