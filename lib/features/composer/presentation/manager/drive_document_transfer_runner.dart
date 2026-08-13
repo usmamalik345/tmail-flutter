@@ -83,7 +83,6 @@ class DriveDocumentTransferRunner {
     } catch (error) {
       _handleTransferFailure(
         taskId: taskId,
-        doc: doc,
         cancelToken: cancelToken,
         exceededDeclaredSize: exceededDeclaredSize,
         error: error,
@@ -105,12 +104,14 @@ class DriveDocumentTransferRunner {
   /// a cancelled transfer must not take its siblings down with it.
   void _handleTransferFailure({
     required UploadTaskId taskId,
-    required DriveDocument doc,
     required CancelToken cancelToken,
     required bool exceededDeclaredSize,
     required Object error,
   }) {
-    logWarning('DriveDocumentTransferRunner::run(${doc.name}): $error');
+    logWarning(
+      'DriveDocumentTransferRunner::run: transfer failed | '
+      'taskId=${taskId.id} | error=${_errorCategory(error)}',
+    );
     if (cancelToken.isCancelled && !exceededDeclaredSize) {
       // The user asked for this one to stop, so no error toast.
       _uploadController.deleteFileUploaded(taskId);
@@ -118,4 +119,10 @@ class DriveDocumentTransferRunner {
       _uploadController.failDriveTransfer(taskId);
     }
   }
+
+  /// A stable, PII-free label for a transfer failure: no document name, no
+  /// download URI, no error message.
+  String _errorCategory(Object error) => error is DioException
+      ? 'DioException.${error.type.name}(${error.response?.statusCode})'
+      : error.runtimeType.toString();
 }
