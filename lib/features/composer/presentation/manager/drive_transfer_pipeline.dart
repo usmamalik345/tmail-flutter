@@ -17,7 +17,16 @@ import 'package:uuid/uuid.dart';
 import 'package:workplace/data/datasource/drive_transfer/drive_transfer_strategy.dart';
 import 'package:workplace/data/datasource/drive_transfer/drive_transfer_strategy_factory.dart';
 import 'package:workplace/data/datasource/drive_transfer/staged_drive_file.dart';
+import 'package:workplace/data/model/workplace_type_defs.dart';
 import 'package:workplace/domain/entity/drive_document.dart';
+
+/// Resolves the JMAP upload endpoint for the current session, or null when
+/// there is none yet.
+typedef ResolveUploadUri = Uri? Function();
+
+/// Resolves the `Authorization` header for the current session, or null when
+/// there is none to send.
+typedef ResolveAuthHeader = String? Function();
 
 /// Downloads drive documents into platform temp storage and uploads them as
 /// real attachments, one bounded-concurrency pipeline per batch.
@@ -31,8 +40,8 @@ class DriveTransferPipeline {
     required UploadController uploadController,
     required FileUploader fileUploader,
     required Uuid uuid,
-    required Uri? Function() resolveUploadUri,
-    required String? Function() resolveAuthHeader,
+    required ResolveUploadUri resolveUploadUri,
+    required ResolveAuthHeader resolveAuthHeader,
   })  : _validationService = validationService,
         _uploadController = uploadController,
         _fileUploader = fileUploader,
@@ -44,8 +53,8 @@ class DriveTransferPipeline {
   final UploadController _uploadController;
   final FileUploader _fileUploader;
   final Uuid _uuid;
-  final Uri? Function() _resolveUploadUri;
-  final String? Function() _resolveAuthHeader;
+  final ResolveUploadUri _resolveUploadUri;
+  final ResolveAuthHeader _resolveAuthHeader;
 
   /// Held for this pipeline's lifetime: the factory caches its capability
   /// detection and runs the stale-staging sweep once per instance.
@@ -166,7 +175,7 @@ class DriveTransferPipeline {
   Future<Attachment> _uploadStagedFile({
     required StagedDriveFile staged,
     required Uri uploadUri,
-    required void Function(int sent, int total) onUploadProgress,
+    required OnFileProcessedProgress onUploadProgress,
     required CancelToken cancelToken,
   }) async {
     final fileInfo = switch (staged) {
