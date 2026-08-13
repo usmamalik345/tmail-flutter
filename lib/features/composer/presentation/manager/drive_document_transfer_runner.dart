@@ -26,6 +26,10 @@ class DriveDocumentTransferRunner {
   final Uuid _uuid;
   final ResolveAuthHeader _resolveAuthHeader;
 
+  /// Whether there is a session to upload with. Checked before a batch starts,
+  /// so no file is downloaded only to be rejected by the upload endpoint.
+  bool get canAuthenticate => _resolveAuthHeader()?.isNotEmpty == true;
+
   Future<void> run({
     required DriveDocument doc,
     required Uri uploadUri,
@@ -44,10 +48,15 @@ class DriveDocumentTransferRunner {
     );
 
     try {
+      final authHeader = _resolveAuthHeader();
+      if (authHeader == null || authHeader.isEmpty) {
+        throw StateError('No authorization header for drive transfer');
+      }
+
       final attachment = await strategy.transfer(DriveTransferRequest(
         doc: doc,
         uploadUri: uploadUri,
-        authHeader: _resolveAuthHeader() ?? '',
+        authHeader: authHeader,
         onDownloadProgress: (received, total) {
           // The link is sending more than the backend declared, so the size
           // the batch was validated against no longer holds: stop now.

@@ -70,6 +70,11 @@ class DriveTransferPipeline {
       return false;
     }
 
+    if (!_transferRunner.canAuthenticate) {
+      logWarning('DriveTransferPipeline::transfer: no authorization header available');
+      return false;
+    }
+
     final strategy = _strategyFactory.create(
       uploader: ({
         required staged,
