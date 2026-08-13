@@ -1,4 +1,5 @@
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:core/data/constants/constant.dart';
@@ -3815,6 +3816,129 @@ void main() {
         );
       },
     );
+  });
+
+  // ============================================================
+  // currentAuthorizationHeader + onRequest
+  // ============================================================
+  group('currentAuthorizationHeader + onRequest', () {
+    const userName = 'alice@domain.tld';
+    const password = '12345';
+    final basicHeaderValue =
+        'Basic ${base64Encode(utf8.encode('$userName:$password'))}';
+
+    /// Captures the headers as they leave the auth interceptor, so a test can
+    /// assert both what is written and what is left untouched.
+    Map<String, dynamic> sendRequestAndCaptureHeaders() {
+      final sentHeaders = <String, dynamic>{};
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          sentHeaders.addAll(options.headers);
+          handler.next(options);
+        },
+      ));
+      dioAdapter.onPost(
+        baseUrl,
+        (server) => server.reply(responseStatusCode200, dataRequestSuccessfully),
+      );
+      return sentHeaders;
+    }
+
+    test('should return the basic header WHEN basic authorization is set', () {
+      authorizationInterceptors.setBasicAuthorization(
+        UserName(userName),
+        Password(password),
+      );
+
+      expect(authorizationInterceptors.currentAuthorizationHeader, basicHeaderValue);
+    });
+
+    test('should return the bearer header WHEN the OIDC token is still valid', () {
+      authorizationInterceptors.setTokenAndAuthorityOidc(
+        newToken: OIDCFixtures.tokenOidcNotExpiredYet,
+        newConfig: OIDCFixtures.oidcConfiguration,
+      );
+
+      expect(
+        authorizationInterceptors.currentAuthorizationHeader,
+        'Bearer ${OIDCFixtures.tokenOidcNotExpiredYet.token}',
+      );
+    });
+
+    test('should return NULL WHEN the OIDC token is empty', () {
+      authorizationInterceptors.setTokenAndAuthorityOidc(
+        newToken: OIDCFixtures.tokenOidcExpiredTimeAndTokenEmpty,
+        newConfig: OIDCFixtures.oidcConfiguration,
+      );
+
+      expect(authorizationInterceptors.currentAuthorizationHeader, isNull);
+    });
+
+    test('should return the bearer header WHEN the OIDC token is expired but not empty', () {
+      authorizationInterceptors.setTokenAndAuthorityOidc(
+        newToken: OIDCFixtures.tokenOidcExpiredTime,
+        newConfig: OIDCFixtures.oidcConfiguration,
+      );
+
+      // Expiry is `onError`'s business: the request goes out with the stale
+      // token and is retried after the refresh it triggers.
+      expect(
+        authorizationInterceptors.currentAuthorizationHeader,
+        'Bearer ${OIDCFixtures.tokenOidcExpiredTime.token}',
+      );
+    });
+
+    test('should return NULL WHEN there is no authentication', () {
+      expect(authorizationInterceptors.authenticationType, AuthenticationType.none);
+      expect(authorizationInterceptors.currentAuthorizationHeader, isNull);
+    });
+
+    test('should send the basic header WHEN basic authorization is set', () async {
+      authorizationInterceptors.setBasicAuthorization(
+        UserName(userName),
+        Password(password),
+      );
+      final sentHeaders = sendRequestAndCaptureHeaders();
+
+      await dio.post(baseUrl);
+
+      expect(sentHeaders[HttpHeaders.authorizationHeader], basicHeaderValue);
+    });
+
+    test('should send the bearer header WHEN the OIDC token is still valid', () async {
+      authorizationInterceptors.setTokenAndAuthorityOidc(
+        newToken: OIDCFixtures.tokenOidcNotExpiredYet,
+        newConfig: OIDCFixtures.oidcConfiguration,
+      );
+      final sentHeaders = sendRequestAndCaptureHeaders();
+
+      await dio.post(baseUrl);
+
+      expect(
+        sentHeaders[HttpHeaders.authorizationHeader],
+        'Bearer ${OIDCFixtures.tokenOidcNotExpiredYet.token}',
+      );
+    });
+
+    test('should NOT add the authorization header WHEN there is no authentication', () async {
+      final sentHeaders = sendRequestAndCaptureHeaders();
+
+      await dio.post(baseUrl);
+
+      expect(sentHeaders.containsKey(HttpHeaders.authorizationHeader), isFalse);
+    });
+
+    test('should NOT add the authorization header WHEN the OIDC token is empty', () async {
+      authorizationInterceptors.setTokenAndAuthorityOidc(
+        newToken: OIDCFixtures.tokenOidcExpiredTimeAndTokenEmpty,
+        newConfig: OIDCFixtures.oidcConfiguration,
+      );
+      final sentHeaders = sendRequestAndCaptureHeaders();
+
+      await dio.post(baseUrl);
+
+      expect(sentHeaders.containsKey(HttpHeaders.authorizationHeader), isFalse);
+    });
   });
 
   tearDown(() {
