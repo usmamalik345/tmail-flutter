@@ -146,6 +146,30 @@ void main() {
     );
   });
 
+  test('lets a staging quota failure through unwrapped', () async {
+    // `DriveTransferPipeline` branches on this type to report an exhausted
+    // quota rather than log it like any other transfer error, so wrapping it
+    // in a DioException the way an unrecognised browser error is wrapped
+    // would silently downgrade the one staging failure the user can act on.
+    const content = 'hello opfs world';
+    final doc = DriveDocument(
+      id: 'doc-opfs-2c',
+      name: 'quota-exhausted.txt',
+      size: content.length,
+      mimeType: 'text/plain',
+      downloadLink: Uri.dataFromString(content, mimeType: 'text/plain'),
+    );
+
+    await expectLater(
+      OpfsDriveFileStager(store: _QuotaExceededStore()).stage(
+        doc: doc,
+        onDownloadProgress: (_, __) {},
+        cancelToken: CancelToken(),
+      ),
+      throwsA(isA<DriveStagingQuotaExceededException>()),
+    );
+  });
+
   test('removes the OPFS temp entry when the transfer fails mid-stream',
       () async {
     final store = _CountingRemoveStore();
@@ -861,6 +885,16 @@ class _FailingWriteStore extends OpfsFileOps {
   Future<void> writeChunk(
       web.FileSystemWritableFileStream stream, Uint8List chunk) async {
     throw StateError('write failed');
+  }
+}
+
+/// A full origin quota, already typed by [OpfsFileOps] before it reaches the
+/// stager — unlike [_FailingWriteStore], whose failure has no type to keep.
+class _QuotaExceededStore extends OpfsFileOps {
+  @override
+  Future<void> writeChunk(
+      web.FileSystemWritableFileStream stream, Uint8List chunk) async {
+    throw DriveStagingQuotaExceededException('QuotaExceededError');
   }
 }
 

@@ -19,6 +19,7 @@ import 'package:workplace/data/datasource/drive_transfer/drive_transfer_strategy
 import 'package:workplace/data/datasource/drive_transfer/staged_drive_file.dart';
 import 'package:workplace/data/model/workplace_type_defs.dart';
 import 'package:workplace/domain/entity/drive_document.dart';
+import 'package:workplace/domain/exceptions/workplace_exceptions.dart';
 
 /// Resolves the JMAP upload endpoint for the current session, or null when
 /// there is none yet.
@@ -156,16 +157,31 @@ class DriveTransferPipeline {
         taskId: taskId,
         attachment: attachment,
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
       // A failing file drops its own chip and nothing else: an expired link or
       // a cancelled transfer must not take its siblings down with it.
-      logWarning('DriveTransferPipeline::_transferOne(${doc.name}): $error');
+      _logTransferFailure(doc, error, stackTrace);
       if (cancelToken.isCancelled) {
         // The user asked for this one to stop, so no error toast.
         _uploadController.deleteFileUploaded(taskId);
       } else {
         _uploadController.failDriveTransfer(taskId);
       }
+    }
+  }
+
+  void _logTransferFailure(DriveDocument doc, Object error, StackTrace stackTrace) {
+    // Running out of browser storage is a condition worth acting on, unlike
+    // an expired link or a cancelled transfer, so it is reported rather than
+    // just logged.
+    if (error is DriveStagingQuotaExceededException) {
+      logError(
+        'DriveTransferPipeline::_transferOne(${doc.name}): staging storage exhausted',
+        exception: error,
+        stackTrace: stackTrace,
+      );
+    } else {
+      logWarning('DriveTransferPipeline::_transferOne(${doc.name}): $error');
     }
   }
 

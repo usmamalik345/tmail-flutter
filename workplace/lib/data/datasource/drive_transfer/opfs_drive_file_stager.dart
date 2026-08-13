@@ -88,9 +88,9 @@ class OpfsDriveFileStager implements DriveFileStager<OpfsStagedFile> {
   /// The one place a staging failure is shaped, so callers only ever branch on
   /// [DioExceptionType]. Without it the OPFS half of the pipeline —
   /// `createTempFile`, `openWritable`, `writeChunk`, `closeWritable` — would
-  /// surface raw browser errors (`QuotaExceededError` on a full disk, a bare
-  /// `DOMException`) that no caller can classify. The download half already
-  /// arrives Dio-shaped and passes through untouched.
+  /// surface bare `DOMException`s that no caller can classify. The download
+  /// half already arrives Dio-shaped and passes through untouched, as do the
+  /// domain exceptions below.
   static Object _asDioFailure(Object error, CancelToken cancelToken, Uri url) {
     final requestOptions = RequestOptions(path: url.toString());
     // Checked first: a cancellation reaches here as whatever the browser threw
@@ -103,8 +103,11 @@ class OpfsDriveFileStager implements DriveFileStager<OpfsStagedFile> {
         reason: 'drive staging was cancelled',
       );
     }
-    // Carries its own received/expected counts; flattening it would lose them.
+    // Both carry information a caller acts on, so neither is flattened into a
+    // DioException: the first its received/expected counts, and the second the
+    // one staging failure `DriveTransferPipeline` reports rather than logs.
     if (error is DriveDownloadIncompleteException) return error;
+    if (error is DriveStagingQuotaExceededException) return error;
     if (error is DioException) return error;
     // Spelled out rather than via a `DioException` factory, which hardcodes
     // `error: null` and would drop the browser's own failure — the same reason

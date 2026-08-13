@@ -5,6 +5,7 @@ import 'package:core/utils/app_logger.dart';
 import 'package:web/web.dart' as web;
 import 'package:workplace/data/datasource/drive_transfer/opfs_file_handle.dart';
 import 'package:workplace/data/datasource/drive_transfer/opfs_store.dart';
+import 'package:workplace/domain/exceptions/workplace_exceptions.dart';
 
 /// Marks an OPFS entry as this package's, so [OpfsFileOps.sweepStaleTempFiles]
 /// leaves the origin's other data alone.
@@ -18,6 +19,21 @@ extension type _DirectoryHandleKeys(JSObject _) implements JSObject {
 
 extension type _AsyncStringIterator(JSObject _) implements JSObject {
   external JSPromise<_AsyncIterationResult> next();
+}
+
+/// `package:web`'s `DOMException` is an extension type over [JSObject], so a
+/// caught quota error can only be recognised by reading its `name`.
+extension type _JsErrorName(JSObject _) implements JSObject {
+  external String? get name;
+}
+
+extension on Object {
+  /// True when this is a JS `DOMException` reporting an exhausted quota.
+  bool get isQuotaExceededError {
+    final jsError = this;
+    if (jsError is! JSObject) return false;
+    return _JsErrorName(jsError).name == 'QuotaExceededError';
+  }
 }
 
 extension type _AsyncIterationResult(JSObject _) implements JSObject {
@@ -61,12 +77,27 @@ class OpfsFileOps implements OpfsStore {
 
   @override
   Future<void> writeChunk(
-      web.FileSystemWritableFileStream stream, Uint8List chunk) =>
-      stream.write(chunk.toJS).toDart;
+          web.FileSystemWritableFileStream stream, Uint8List chunk) =>
+      _mappingQuotaError(() => stream.write(chunk.toJS).toDart);
 
   @override
   Future<void> closeWritable(web.FileSystemWritableFileStream stream) =>
-      stream.close().toDart;
+      _mappingQuotaError(() => stream.close().toDart);
+
+  /// A full quota surfaces as a raw JS `DOMException`, indistinguishable at
+  /// every layer above from a CORS or DNS failure unless it is typed here.
+  /// `package:web`'s `DOMException` is an extension type over `JSObject`, so
+  /// this is a name probe rather than a Dart `is` check.
+  Future<void> _mappingQuotaError(Future<void> Function() write) async {
+    try {
+      await write();
+    } catch (error) {
+      if (error.isQuotaExceededError) {
+        throw DriveStagingQuotaExceededException(error);
+      }
+      rethrow;
+    }
+  }
 
   @override
   Future<void> abortWritable(web.FileSystemWritableFileStream stream) =>
@@ -91,17 +122,10 @@ class OpfsFileOps implements OpfsStore {
   }) async {
     final root = await _opfsRoot();
     final cutoff = DateTime.now().subtract(olderThan);
-    final iterator = (root as _DirectoryHandleKeys).keys();
-    // Collected first: removing entries while iterating the same directory is
-    // not guaranteed to leave the iteration stable, which can skip entries.
-    final staleNames = <String>[];
-    while (true) {
-      final step = await iterator.next().toDart;
-      if (step.done) break;
-      final name = step.value;
-      if (name == null || !_isStaleTempFile(name, cutoff)) continue;
-      staleNames.add(name);
-    }
+    final staleNames = await _listTempFileNames(
+      root,
+      where: (name) => _isStaleTempFile(name, cutoff),
+    );
     for (final name in staleNames) {
       try {
         await root.removeEntry(name).toDart;
@@ -110,14 +134,52 @@ class OpfsFileOps implements OpfsStore {
       }
     }
   }
-}
 
-/// Names are `<prefix><microsSinceEpoch>_...`. A name that doesn't parse is
-/// left alone.
-bool _isStaleTempFile(String name, DateTime cutoff) {
-  if (!name.startsWith(opfsTempFilePrefix)) return false;
-  final micros = int.tryParse(
-      name.substring(opfsTempFilePrefix.length).split('_').first);
-  if (micros == null) return false;
-  return DateTime.fromMicrosecondsSinceEpoch(micros).isBefore(cutoff);
+  /// Removes every staging entry regardless of age.
+  ///
+  /// Staged documents are persistent and origin-scoped, so without this they
+  /// outlive a logout and carry into the next account's session. Stays scoped
+  /// to [opfsTempFilePrefix] so it can never touch the origin's other data.
+  /// An entry another tab holds open fails its removal — logged and skipped;
+  /// logout is global by intent.
+  Future<void> purgeAllTempFiles() async {
+    final root = await _opfsRoot();
+    for (final name in await _listTempFileNames(root)) {
+      try {
+        await root.removeEntry(name).toDart;
+      } catch (e) {
+        logWarning('OpfsFileOps: failed to purge temp file $name: $e');
+      }
+    }
+  }
+
+  /// Collected before removing anything: removing entries while iterating the
+  /// same directory is not guaranteed to leave the iteration stable, which can
+  /// skip entries.
+  Future<List<String>> _listTempFileNames(
+    web.FileSystemDirectoryHandle root, {
+    bool Function(String name)? where,
+  }) async {
+    final iterator = (root as _DirectoryHandleKeys).keys();
+    final names = <String>[];
+    while (true) {
+      final step = await iterator.next().toDart;
+      if (step.done) break;
+      final name = step.value;
+      if (name == null || !name.startsWith(opfsTempFilePrefix)) continue;
+      if (where != null && !where(name)) continue;
+      names.add(name);
+    }
+    return names;
+  }
+
+  /// Names are `<prefix><microsSinceEpoch>_...`. A name that doesn't parse is
+  /// left alone.
+  static bool _isStaleTempFile(String name, DateTime cutoff) {
+    if (!name.startsWith(opfsTempFilePrefix)) return false;
+    final micros = int.tryParse(
+        name.substring(opfsTempFilePrefix.length).split('_').first);
+    if (micros == null) return false;
+    return DateTime.fromMicrosecondsSinceEpoch(micros).isBefore(cutoff);
+  }
 }

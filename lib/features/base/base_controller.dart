@@ -64,6 +64,7 @@ import 'package:tmail_ui_user/main/localizations/app_localizations.dart';
 import 'package:tmail_ui_user/main/routes/app_routes.dart';
 import 'package:tmail_ui_user/main/routes/route_navigation.dart';
 import 'package:tmail_ui_user/main/utils/app_config.dart';
+import 'package:workplace/data/datasource/drive_transfer/drive_staging_purge.dart';
 import 'package:tmail_ui_user/main/universal_import/html_stub.dart' as html;
 import 'package:tmail_ui_user/main/utils/toast_manager.dart';
 import 'package:tmail_ui_user/features/base/urgent_exception_handler.dart';
@@ -656,6 +657,9 @@ abstract class BaseController extends GetxController
           deleteCredentialInteractor.execute(),
         cachingManager.clearAll(),
         languageCacheManager.removeLanguage(),
+        // Drive documents staged for upload are persistent and origin-scoped
+        // on web, so they would otherwise carry into the next account.
+        purgeDriveStagingStorage(),
       ]);
       authorizationInterceptors.clear();
       authorizationIsolateInterceptors.clear();

@@ -23,6 +23,18 @@ class DriveDownloadInsecureLinkException implements Exception {}
 
 class DriveDownloadEmptyResponseException implements Exception {}
 
+/// The browser refused a staging write because the origin's storage quota is
+/// exhausted. Distinguished from a network or CORS failure so it can be
+/// reported rather than lost among ordinary transfer errors.
+class DriveStagingQuotaExceededException implements Exception {
+  final Object? cause;
+
+  DriveStagingQuotaExceededException([this.cause]);
+
+  @override
+  String toString() => 'DriveStagingQuotaExceededException: $cause';
+}
+
 /// The response body ended before the declared `content-length` was reached,
 /// so the staged file is a truncated copy of the document.
 class DriveDownloadIncompleteException implements Exception {
