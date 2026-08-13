@@ -51,15 +51,10 @@ class DriveDocumentTransferRunner {
     );
 
     try {
-      final authHeader = _resolveAuthHeader();
-      if (authHeader == null || authHeader.isEmpty) {
-        throw StateError('No authorization header for drive transfer');
-      }
-
       final attachment = await strategy.transfer(DriveTransferRequest(
         doc: doc,
         uploadUri: uploadUri,
-        authHeader: authHeader,
+        authHeader: _requireAuthHeader(),
         onDownloadProgress: (received, total) {
           // The link is sending more than the backend declared, so the size
           // the batch was validated against no longer holds: stop now.
@@ -86,15 +81,41 @@ class DriveDocumentTransferRunner {
         attachment: attachment,
       );
     } catch (error) {
-      // A failing file drops its own chip and nothing else: an expired link or
-      // a cancelled transfer must not take its siblings down with it.
-      logWarning('DriveDocumentTransferRunner::run(${doc.name}): $error');
-      if (cancelToken.isCancelled && !exceededDeclaredSize) {
-        // The user asked for this one to stop, so no error toast.
-        _uploadController.deleteFileUploaded(taskId);
-      } else {
-        _uploadController.failDriveTransfer(taskId);
-      }
+      _handleTransferFailure(
+        taskId: taskId,
+        doc: doc,
+        cancelToken: cancelToken,
+        exceededDeclaredSize: exceededDeclaredSize,
+        error: error,
+      );
+    }
+  }
+
+  /// The `Authorization` header for the current session, or a thrown
+  /// [StateError] when there is none to send.
+  String _requireAuthHeader() {
+    final authHeader = _resolveAuthHeader();
+    if (authHeader == null || authHeader.isEmpty) {
+      throw StateError('No authorization header for drive transfer');
+    }
+    return authHeader;
+  }
+
+  /// A failing file drops its own chip and nothing else: an expired link or
+  /// a cancelled transfer must not take its siblings down with it.
+  void _handleTransferFailure({
+    required UploadTaskId taskId,
+    required DriveDocument doc,
+    required CancelToken cancelToken,
+    required bool exceededDeclaredSize,
+    required Object error,
+  }) {
+    logWarning('DriveDocumentTransferRunner::run(${doc.name}): $error');
+    if (cancelToken.isCancelled && !exceededDeclaredSize) {
+      // The user asked for this one to stop, so no error toast.
+      _uploadController.deleteFileUploaded(taskId);
+    } else {
+      _uploadController.failDriveTransfer(taskId);
     }
   }
 }
