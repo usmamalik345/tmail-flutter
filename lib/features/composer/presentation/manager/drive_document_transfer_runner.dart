@@ -33,6 +33,7 @@ class DriveDocumentTransferRunner {
   }) async {
     final taskId = UploadTaskId(_uuid.v4());
     final cancelToken = CancelToken();
+    var exceededDeclaredSize = false;
 
     _uploadController.addDownloadingPlaceholder(
       taskId: taskId,
@@ -47,11 +48,20 @@ class DriveDocumentTransferRunner {
         doc: doc,
         uploadUri: uploadUri,
         authHeader: _resolveAuthHeader() ?? '',
-        onDownloadProgress: (received, total) => _uploadController.updateDownloadProgress(
-          taskId: taskId,
-          received: received,
-          total: total,
-        ),
+        onDownloadProgress: (received, total) {
+          // The link is sending more than the backend declared, so the size
+          // the batch was validated against no longer holds: stop now.
+          if (doc.size > 0 && received > doc.size) {
+            exceededDeclaredSize = true;
+            cancelToken.cancel();
+            return;
+          }
+          _uploadController.updateDownloadProgress(
+            taskId: taskId,
+            received: received,
+            total: total,
+          );
+        },
         onUploadProgress: (sent, total) => _uploadController.updateUploadProgress(
           taskId: taskId,
           sent: sent,
@@ -67,7 +77,7 @@ class DriveDocumentTransferRunner {
       // A failing file drops its own chip and nothing else: an expired link or
       // a cancelled transfer must not take its siblings down with it.
       logWarning('DriveDocumentTransferRunner::run(${doc.name}): $error');
-      if (cancelToken.isCancelled) {
+      if (cancelToken.isCancelled && !exceededDeclaredSize) {
         // The user asked for this one to stop, so no error toast.
         _uploadController.deleteFileUploaded(taskId);
       } else {
