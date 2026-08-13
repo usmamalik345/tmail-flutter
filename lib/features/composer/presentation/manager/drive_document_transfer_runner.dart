@@ -13,6 +13,9 @@ typedef ResolveAuthHeader = String? Function();
 
 /// Runs one drive document through both legs of its transfer: chip placeholder,
 /// download and upload progress, then completion or failure.
+///
+/// Every failure — staging, upload, oversized download — drops that file's chip
+/// and toasts; a user cancel drops the chip silently. Siblings are unaffected.
 class DriveDocumentTransferRunner {
   DriveDocumentTransferRunner({
     required UploadController uploadController,

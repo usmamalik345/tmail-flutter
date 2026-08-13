@@ -61,6 +61,10 @@ class DriveTransferPipeline {
   ///
   /// A batch the user declines at the size gate still counts as taken: the
   /// documents were handled and the user was told why nothing was attached.
+  ///
+  /// Failure paths:
+  /// - no upload URI / no auth header / no strategy → `false`, caller toasts.
+  /// - staging or upload failure → per-file, see [DriveDocumentTransferRunner].
   Future<bool> transfer(List<DriveDocument> docs) async {
     if (docs.isEmpty) return false;
 
