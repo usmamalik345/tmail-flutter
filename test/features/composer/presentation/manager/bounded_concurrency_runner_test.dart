@@ -25,36 +25,61 @@ void main() {
     });
 
     test('Should never exceed maxConcurrent tasks in flight', () async {
+      const maxConcurrent = 3;
+      const itemCount = 9;
+
       var inFlight = 0;
       var peakInFlight = 0;
+
       final completers = <Completer<void>>[];
 
       final run = runWithConcurrency(
-        List.generate(9, (index) => index),
-        3,
+        List.generate(itemCount, (index) => index),
+        maxConcurrent,
         (item) async {
           inFlight++;
           peakInFlight = inFlight > peakInFlight ? inFlight : peakInFlight;
+
           final completer = Completer<void>();
           completers.add(completer);
+
           await completer.future;
+
           inFlight--;
         },
       );
 
-      // Release the tasks in waves so the pool has to refill its slots.
-      while (completers.length < 9 || completers.any((c) => !c.isCompleted)) {
-        final pending = completers.where((c) => !c.isCompleted).toList();
-        if (pending.isEmpty) break;
+      // Allow the first wave of workers to start.
+      await Future<void>.delayed(Duration.zero);
+
+      expect(completers, hasLength(maxConcurrent));
+      expect(peakInFlight, maxConcurrent);
+
+      // Release the current tasks so the workers can pick up
+      // the next items.
+      while (completers.length < itemCount) {
+        final pending = completers
+            .where((completer) => !completer.isCompleted)
+            .toList();
+
         for (final completer in pending) {
           completer.complete();
         }
+
         await Future<void>.delayed(Duration.zero);
       }
+
+      // Release the final wave.
+      for (final completer in completers) {
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      }
+
       await run;
 
-      expect(peakInFlight, lessThanOrEqualTo(3));
-      expect(completers, hasLength(9));
+      expect(peakInFlight, lessThanOrEqualTo(maxConcurrent));
+      expect(completers, hasLength(itemCount));
     });
 
     test('Should start a queued item as soon as a slot frees', () async {
