@@ -128,7 +128,10 @@ import 'package:tmail_ui_user/features/upload/domain/state/local_image_picker_st
 import 'package:tmail_ui_user/features/upload/domain/usecases/local_file_picker_interactor.dart';
 import 'package:tmail_ui_user/features/upload/domain/usecases/local_image_picker_interactor.dart';
 import 'package:tmail_ui_user/features/upload/presentation/controller/upload_controller.dart';
+import 'package:tmail_ui_user/features/composer/presentation/manager/drive_transfer_pipeline.dart';
+import 'package:tmail_ui_user/features/upload/data/network/file_uploader.dart';
 import 'package:tmail_ui_user/features/upload/presentation/validator/attachment_upload_validation_service.dart';
+import 'package:uuid/uuid.dart';
 import 'package:tmail_ui_user/main/exceptions/remote/authentication_exception.dart';
 import 'package:tmail_ui_user/main/localizations/app_localizations.dart';
 import 'package:tmail_ui_user/main/routes/route_navigation.dart';
@@ -195,6 +198,15 @@ class ComposerController extends BaseController
           maxSizeAttachmentsPerEmail: () => mailboxDashBoardController.maxSizeAttachmentsPerEmail?.value,
         ),
       );
+
+  late final DriveTransferPipeline _driveTransferPipeline = DriveTransferPipeline(
+    validationService: attachmentUploadValidationService,
+    uploadController: uploadController,
+    fileUploader: Get.find<FileUploader>(),
+    uuid: Get.find<Uuid>(),
+    resolveUploadUri: _getCurrentUploadUri,
+    resolveAuthHeader: () => authorizationInterceptors.currentAuthorizationHeader,
+  );
 
   GetAllAutoCompleteInteractor? _getAllAutoCompleteInteractor;
   GetAutoCompleteInteractor? _getAutoCompleteInteractor;
@@ -530,6 +542,13 @@ class ComposerController extends BaseController
     if (createEmailRequest == null) return;
 
     await _saveComposerCacheInteractor.execute(createEmailRequest: createEmailRequest);
+  }
+
+  Uri? _getCurrentUploadUri() {
+    final session = mailboxDashBoardController.sessionCurrent;
+    final accountId = mailboxDashBoardController.accountId.value;
+    if (session == null || accountId == null) return null;
+    return _getUploadUriFromSession(session, accountId);
   }
 
   Uri? _getUploadUriFromSession(Session session, AccountId accountId) {
@@ -1025,6 +1044,9 @@ class ComposerController extends BaseController
             await SchedulerBinding.instance.endOfFrame;
           }
         },
+        // Closure, not a tear-off: keeps the pipeline's GetX lookups out of
+        // link-only picks, which never reach it.
+        startDriveTransfers: (docs) => _driveTransferPipeline.transfer(docs),
         appLocalizations: currentContext != null ? AppLocalizations.of(currentContext!) : null,
       );
     } catch (e) {

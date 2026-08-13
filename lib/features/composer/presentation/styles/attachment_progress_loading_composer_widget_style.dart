@@ -7,4 +7,8 @@ class AttachmentProgressLoadingComposerWidgetStyle {
 
   static const Color backgroundColor = AppColor.colorProgressLoadingBackground;
   static const Color progressColor = AppColor.primaryColor;
+
+  /// Marks the staging leg of a drive transfer, which fills the first half of
+  /// the same bar [progressColor] then finishes.
+  static const Color downloadProgressColor = AppColor.toastSuccessBackgroundColor;
 }

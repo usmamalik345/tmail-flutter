@@ -14,9 +14,18 @@ class DriveAttachmentHandler {
   /// Whether non-https sharing/thumbnail links should be rejected.
   bool get requireHttps => BuildUtils.isReleaseMode;
 
+  /// Splits picked documents by how they can be attached and dispatches each
+  /// half.
+  ///
+  /// [startDriveTransfers] downloads and attaches the documents that carry
+  /// only a `downloadLink`, returning whether it took them. It declines on
+  /// platforms with no staging strategy, and those documents then fall back to
+  /// the "not available yet" message — the same behaviour as before drive
+  /// transfers existed.
   Future<void> handleDrivePickResult(
     List<DriveDocument> result, {
     required Future<void> Function(String html) insertHtml,
+    required Future<bool> Function(List<DriveDocument> docs) startDriveTransfers,
     AppLocalizations? appLocalizations,
   }) async {
     if (result.isEmpty) {
@@ -32,19 +41,29 @@ class DriveAttachmentHandler {
       final link = doc.sharingLink;
       return link != null && (!requireHttps || link.isScheme('https'));
     }).toList();
-    // TODO: Update logic here after implement 103. Attach Drive File as Attachment
-    if (linkDocs.isEmpty) {
+    // Exclusive with linkDocs by construction: a document carrying both links
+    // is a link, because a live document is worth more than a static copy.
+    final downloadableDocs = result
+        .where((doc) => doc.sharingLink == null && doc.downloadLink != null)
+        .toList();
+
+    if (linkDocs.isNotEmpty) {
+      await insertDriveLinkHtml(
+        linkDocs,
+        insertHtml: insertHtml,
+        appLocalizations: appLocalizations,
+      );
+    }
+
+    final transfersStarted = downloadableDocs.isNotEmpty &&
+        await startDriveTransfers(downloadableDocs);
+
+    if (linkDocs.isEmpty && !transfersStarted) {
       getBinding<ToastManager>()?.showMessageFailure(DrivePickFailure(
         Exception(),
         message: appLocalizations?.driveAttachmentInDevelopment,
       ));
-      return;
     }
-    await insertDriveLinkHtml(
-      linkDocs,
-      insertHtml: insertHtml,
-      appLocalizations: appLocalizations,
-    );
   }
 
   Future<void> insertDriveLinkHtml(

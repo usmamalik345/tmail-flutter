@@ -76,6 +76,27 @@ class AttachmentUploadValidationService {
     );
   }
 
+  /// Validates a proposed upload known only by its byte totals — no
+  /// [FileInfo] and no [Attachment] yet — then runs [onAllowed] when the
+  /// upload may proceed. Used by the drive transfer, which gates a batch on
+  /// the sizes the backend declared before downloading anything.
+  Future<void> validateBytes({
+    BuildContext? context,
+    required int proposedAllAttachmentBytes,
+    required int proposedRegularAttachmentBytes,
+    required VoidCallback onAllowed,
+  }) {
+    return _validate(
+      context: context,
+      request: _requestFactory.fromProposedBytes(
+        proposedAllAttachmentBytes: proposedAllAttachmentBytes,
+        proposedRegularAttachmentBytes: proposedRegularAttachmentBytes,
+        state: _stateSource,
+      ),
+      onAllowed: onAllowed,
+    );
+  }
+
   /// Whether what is already attached exceeds the server hard cap, without
   /// showing any dialog.
   bool isExceededMaxSizeAttachmentsPerEmail() {

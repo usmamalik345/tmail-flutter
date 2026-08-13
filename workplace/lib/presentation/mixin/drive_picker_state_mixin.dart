@@ -1,4 +1,5 @@
 import 'package:core/utils/app_logger.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:workplace/data/model/workplace_intent_request.dart';
 import 'package:workplace/domain/entity/workplace_intent.dart';
@@ -42,13 +43,15 @@ mixin DrivePickerStateMixin<T extends StatefulWidget> on State<T> {
       // Captured up front: the caller may pop this context (e.g. a context
       // menu tile) before the intent future settles, disposing this state.
       final failingMessage = l10n.attachFromDriveFailingMessage;
-      const addAsAttachmentTitle = null; // TODO: Add attachment title here after implement 103. Attach Drive File as Attachment
       final theme = _resolveWorkplaceTheme(context);
       final filePickerConfig = WorkplaceFilePickerConfigRequest(
         sharingLink: WorkplaceActionConfigRequest(label: l10n.addAsLink),
-        downloadLink: addAsAttachmentTitle == null
-            ? null
-            : const WorkplaceActionConfigRequest(label: addAsAttachmentTitle),
+        // Web only: it is the one platform with a staging strategy, so
+        // offering the action elsewhere would only ever reach the
+        // "not available yet" message.
+        downloadLink: kIsWeb
+            ? WorkplaceActionConfigRequest(label: l10n.addAsAttachment)
+            : null,
         theme: WorkplaceThemeConfigRequest.fromEntity(theme),
       );
       DrivePickOutcome? outcome;

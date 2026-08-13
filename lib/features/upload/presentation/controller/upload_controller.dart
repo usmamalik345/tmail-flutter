@@ -213,6 +213,96 @@ class UploadController extends BaseController {
     _refreshListUploadAttachmentState();
   }
 
+  /// A drive transfer is one operation to the user, so its chip fills a single
+  /// bar across both legs: staging maps onto 0-50, uploading onto 50-100.
+  static const int _downloadProgressCeiling = 50;
+
+  static int _mapProgress(int processed, int total, {required int from, required int to}) {
+    if (total <= 0) return from;
+    final ratio = processed / total;
+    final mapped = from + (ratio * (to - from)).round();
+    return mapped.clamp(from, to);
+  }
+
+  /// Shows a drive file's chip the moment its transfer starts, before any
+  /// bytes arrive. The placeholder carries the document's metadata as a
+  /// [FileInfo] so the chip renders its name, size and icon like any other.
+  void addDownloadingPlaceholder({
+    required UploadTaskId taskId,
+    required String fileName,
+    required int fileSize,
+    String? mimeType,
+    CancelToken? cancelToken,
+  }) {
+    _uploadingStateFiles.add(UploadFileState(
+      taskId,
+      file: FileInfo(
+        fileName: fileName,
+        fileSize: fileSize,
+        type: mimeType,
+      ),
+      uploadStatus: UploadFileStatus.downloading,
+      cancelToken: cancelToken,
+    ));
+    _refreshListUploadAttachmentState();
+  }
+
+  void updateDownloadProgress({
+    required UploadTaskId taskId,
+    required int received,
+    required int total,
+  }) {
+    _uploadingStateFiles.updateElementByUploadTaskId(
+      taskId,
+      (currentState) => currentState?.copyWith(
+        uploadingProgress: _mapProgress(
+          received,
+          total,
+          from: 0,
+          to: _downloadProgressCeiling,
+        ),
+      ),
+    );
+    _refreshListUploadAttachmentState();
+  }
+
+  /// Flips the chip to [UploadFileStatus.uploading] and resumes the bar from
+  /// the halfway mark rather than restarting it.
+  void updateUploadProgress({
+    required UploadTaskId taskId,
+    required int sent,
+    required int total,
+  }) {
+    _uploadingStateFiles.updateElementByUploadTaskId(
+      taskId,
+      (currentState) => currentState?.copyWith(
+        uploadStatus: UploadFileStatus.uploading,
+        uploadingProgress: _mapProgress(
+          sent,
+          total,
+          from: _downloadProgressCeiling,
+          to: 100,
+        ),
+      ),
+    );
+    _refreshListUploadAttachmentState();
+  }
+
+  void completeUploadedFile({
+    required UploadTaskId taskId,
+    required Attachment attachment,
+  }) {
+    _uploadingStateFiles.updateElementByUploadTaskId(
+      taskId,
+      (currentState) => currentState?.copyWith(
+        uploadStatus: UploadFileStatus.succeed,
+        uploadingProgress: 100,
+        attachment: attachment,
+      ),
+    );
+    _refreshListUploadAttachmentState();
+  }
+
   Future<void> justUploadAttachmentsAction({
     required List<FileInfo> uploadFiles,
     required Uri uploadUri,

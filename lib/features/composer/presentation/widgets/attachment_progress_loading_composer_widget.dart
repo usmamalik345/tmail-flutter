@@ -27,23 +27,35 @@ class AttachmentProgressLoadingComposerWidget extends StatelessWidget {
             backgroundColor: AttachmentProgressLoadingComposerWidgetStyle.backgroundColor,
           ),
         );
+      case UploadFileStatus.downloading:
+        return _buildPercentIndicator(
+          AttachmentProgressLoadingComposerWidgetStyle.downloadProgressColor,
+        );
       case UploadFileStatus.uploading:
-        return Padding(
-          padding: AttachmentItemComposerWidgetStyle.progressLoadingPadding,
-          child: LinearPercentIndicator(
-            padding: EdgeInsets.zero,
-            lineHeight:AttachmentProgressLoadingComposerWidgetStyle.height,
-            percent: percentUploading > 1.0
-              ? 1.0
-              : percentUploading,
-            barRadius: const Radius.circular(AttachmentProgressLoadingComposerWidgetStyle.radius),
-            backgroundColor: AttachmentProgressLoadingComposerWidgetStyle.backgroundColor,
-            progressColor: AttachmentProgressLoadingComposerWidgetStyle.progressColor,
-          ),
+        return _buildPercentIndicator(
+          AttachmentProgressLoadingComposerWidgetStyle.progressColor,
         );
       case UploadFileStatus.uploadFailed:
       case UploadFileStatus.succeed:
         return const SizedBox.shrink();
     }
+  }
+
+  /// A drive transfer keeps filling one bar across both of its legs — only
+  /// [progressColor] changes at the halfway point.
+  Widget _buildPercentIndicator(Color progressColor) {
+    return Padding(
+      padding: AttachmentItemComposerWidgetStyle.progressLoadingPadding,
+      child: LinearPercentIndicator(
+        padding: EdgeInsets.zero,
+        lineHeight:AttachmentProgressLoadingComposerWidgetStyle.height,
+        percent: percentUploading > 1.0
+          ? 1.0
+          : percentUploading,
+        barRadius: const Radius.circular(AttachmentProgressLoadingComposerWidgetStyle.radius),
+        backgroundColor: AttachmentProgressLoadingComposerWidgetStyle.backgroundColor,
+        progressColor: progressColor,
+      ),
+    );
   }
 }

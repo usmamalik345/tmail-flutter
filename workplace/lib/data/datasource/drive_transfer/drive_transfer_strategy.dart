@@ -15,6 +15,14 @@ import 'package:workplace/domain/entity/drive_document.dart';
 /// leak temp storage nor hand a strategy a staged file it can't consume. [T]
 /// pins that variant, keeping the pairing a compile-time concern.
 abstract class DriveTransferStrategy<T extends StagedDriveFile> {
+  /// How many transfers may run at once under this strategy. Lives here so
+  /// orchestration never has to name a platform-specific strategy type — the
+  /// cost of a concurrent transfer is the strategy's own business.
+  ///
+  /// The default is the conservative one: a strategy that holds a whole file
+  /// in memory per transfer.
+  int get maxConcurrentTransfers => 2;
+
   Future<Attachment> transfer(DriveTransferRequest request) async {
     final staged = await stage(
       doc: request.doc,

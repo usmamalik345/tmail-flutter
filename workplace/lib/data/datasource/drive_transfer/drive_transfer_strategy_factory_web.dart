@@ -29,7 +29,11 @@ class DriveTransferStrategyFactory {
 
   /// [uploader] backs the buffered fallback only; the OPFS strategy uploads
   /// through its own raw-XHR path.
-  DriveTransferStrategy<StagedDriveFile> create(
+  ///
+  /// Never null on web: one of the two strategies always applies. The
+  /// nullable return type is the mobile branch's "no staging strategy yet"
+  /// signal, shared so callers have one contract.
+  DriveTransferStrategy<StagedDriveFile>? create(
       {required StagedFileUploader uploader}) {
     _opfsSupported ??= _detectOpfsSupport();
     if (!_opfsSupported!) {

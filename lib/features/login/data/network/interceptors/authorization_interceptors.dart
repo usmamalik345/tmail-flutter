@@ -90,21 +90,34 @@ class AuthorizationInterceptors extends QueuedInterceptorsWrapper {
   TokenOIDC? get currentToken =>
       _authenticationType == AuthenticationType.oidc ? _token : null;
 
-  @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    switch(_authenticationType) {
+  /// The `Authorization` header value for the current session, or null when
+  /// there is none to send.
+  ///
+  /// [onRequest] applies it to every request on this Dio instance; requests
+  /// made outside Dio — the drive-transfer OPFS upload's raw XHR — read it
+  /// from here, so the header is built in exactly one place.
+  String? get currentAuthorizationHeader {
+    switch (_authenticationType) {
       case AuthenticationType.basic:
         if (_authorization != null) {
-          options.headers[HttpHeaders.authorizationHeader] = _getAuthorizationAsBasicHeader(_authorization);
+          return _getAuthorizationAsBasicHeader(_authorization);
         }
-        break;
+        return null;
       case AuthenticationType.oidc:
         if (_token != null && _token?.isTokenValid() == true) {
-          options.headers[HttpHeaders.authorizationHeader] = _getTokenAsBearerHeader(_token!.token);
+          return _getTokenAsBearerHeader(_token!.token);
         }
-        break;
+        return null;
       case AuthenticationType.none:
-        break;
+        return null;
+    }
+  }
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    final authorizationHeader = currentAuthorizationHeader;
+    if (authorizationHeader != null) {
+      options.headers[HttpHeaders.authorizationHeader] = authorizationHeader;
     }
     log('AuthorizationInterceptors::onRequest(): URL = ${options.uri} | DATA = ${options.data}');
     super.onRequest(options, handler);

@@ -22,6 +22,11 @@ class OpfsDriveTransferStrategy extends DriveTransferStrategy<OpfsStagedFile> {
   final DriveFileStager<OpfsStagedFile> _stager;
   final OpfsDriveFileUploader _uploader;
 
+  /// Staging and uploading are both streamed through OPFS, so a concurrent
+  /// transfer costs disk residency rather than heap.
+  @override
+  int get maxConcurrentTransfers => 3;
+
   @protected
   @override
   Future<OpfsStagedFile> stage({
