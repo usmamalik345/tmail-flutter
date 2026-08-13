@@ -213,17 +213,6 @@ class UploadController extends BaseController {
     _refreshListUploadAttachmentState();
   }
 
-  /// A drive transfer is one operation to the user, so its chip fills a single
-  /// bar across both legs: staging maps onto 0-50, uploading onto 50-100.
-  static const int _downloadProgressCeiling = 50;
-
-  static int _mapProgress(int processed, int total, {required int from, required int to}) {
-    if (total <= 0) return from;
-    final ratio = processed / total;
-    final mapped = from + (ratio * (to - from)).round();
-    return mapped.clamp(from, to);
-  }
-
   /// Shows a drive file's chip the moment its transfer starts, before any
   /// bytes arrive. The placeholder carries the document's metadata as a
   /// [FileInfo] so the chip renders its name, size and icon like any other.
@@ -543,4 +532,15 @@ class UploadController extends BaseController {
       super.handleSuccessViewState(success);
     }
   }
+}
+
+/// A drive transfer is one operation to the user, so its chip fills a single
+/// bar across both legs: staging maps onto 0-50, uploading onto 50-100.
+const int _downloadProgressCeiling = 50;
+
+int _mapProgress(int processed, int total, {required int from, required int to}) {
+  if (total <= 0) return from;
+  final ratio = processed / total;
+  final mapped = from + (ratio * (to - from)).round();
+  return mapped.clamp(from, to);
 }
