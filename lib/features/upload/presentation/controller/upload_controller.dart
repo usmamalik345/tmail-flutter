@@ -247,6 +247,7 @@ class UploadController extends BaseController {
         uploadingProgress: _mapProgress(
           received,
           total,
+          current: currentState.uploadingProgress,
           from: 0,
           to: _downloadProgressCeiling,
         ),
@@ -269,6 +270,7 @@ class UploadController extends BaseController {
         uploadingProgress: _mapProgress(
           sent,
           total,
+          current: currentState.uploadingProgress,
           from: _downloadProgressCeiling,
           to: 100,
         ),
@@ -545,8 +547,16 @@ class UploadController extends BaseController {
 /// bar across both legs: staging maps onto 0-50, uploading onto 50-100.
 const int _downloadProgressCeiling = 50;
 
-int _mapProgress(int processed, int total, {required int from, required int to}) {
-  if (total <= 0) return from;
+int _mapProgress(
+  int processed,
+  int total, {
+  required int current,
+  required int from,
+  required int to,
+}) {
+  // An unknown content length must not rewind the bar: hold where it stands,
+  // pulled into this leg's band.
+  if (total <= 0) return current.clamp(from, to);
   final ratio = processed / total;
   final mapped = from + (ratio * (to - from)).round();
   return mapped.clamp(from, to);

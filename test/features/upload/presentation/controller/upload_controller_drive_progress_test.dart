@@ -126,6 +126,23 @@ void main() {
       expect(progressOf(taskId), 0);
     });
 
+    test('Should hold the bar where it stands when the upload length goes unknown midway', () {
+      uploadController.updateUploadProgress(
+        taskId: taskId,
+        sent: 1200,
+        total: 2000,
+      );
+      expect(progressOf(taskId), 80);
+
+      uploadController.updateUploadProgress(
+        taskId: taskId,
+        sent: 1400,
+        total: 0,
+      );
+
+      expect(progressOf(taskId), 80);
+    });
+
     test('Should resume from the halfway mark when the upload starts', () {
       uploadController.updateDownloadProgress(
         taskId: taskId,
