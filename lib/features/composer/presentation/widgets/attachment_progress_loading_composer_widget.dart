@@ -28,22 +28,16 @@ class AttachmentProgressLoadingComposerWidget extends StatelessWidget {
           ),
         );
       case UploadFileStatus.fetching:
-        return _buildPercentIndicator(
-          AttachmentProgressLoadingComposerWidgetStyle.downloadProgressColor,
-        );
       case UploadFileStatus.uploading:
-        return _buildPercentIndicator(
-          AttachmentProgressLoadingComposerWidgetStyle.progressColor,
-        );
+        return _buildPercentIndicator();
       case UploadFileStatus.uploadFailed:
       case UploadFileStatus.succeed:
         return const SizedBox.shrink();
     }
   }
 
-  /// A drive transfer keeps filling one bar across both of its legs — only
-  /// [progressColor] changes at the halfway point.
-  Widget _buildPercentIndicator(Color progressColor) {
+  /// A drive transfer keeps filling one bar across both of its legs.
+  Widget _buildPercentIndicator() {
     return Padding(
       padding: AttachmentItemComposerWidgetStyle.progressLoadingPadding,
       child: LinearPercentIndicator(
@@ -54,7 +48,7 @@ class AttachmentProgressLoadingComposerWidget extends StatelessWidget {
           : percentUploading,
         barRadius: const Radius.circular(AttachmentProgressLoadingComposerWidgetStyle.radius),
         backgroundColor: AttachmentProgressLoadingComposerWidgetStyle.backgroundColor,
-        progressColor: progressColor,
+        progressColor: AttachmentProgressLoadingComposerWidgetStyle.progressColor,
       ),
     );
   }
