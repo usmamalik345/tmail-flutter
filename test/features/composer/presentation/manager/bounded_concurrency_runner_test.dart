@@ -5,18 +5,23 @@ import 'package:tmail_ui_user/features/composer/presentation/manager/bounded_con
 
 void main() {
   group('runWithConcurrency::', () {
-    test('Should process every item', () async {
+    test('Should process every item exactly once', () async {
       final processed = <int>[];
 
       await runWithConcurrency(
-        List.generate(10, (index) => index),
-        3,
+        List.generate(100, (index) => index),
+        5,
         (item) async {
           processed.add(item);
         },
       );
 
-      expect(processed..sort(), List.generate(10, (index) => index));
+      expect(processed, hasLength(100));
+      expect(processed.toSet(), hasLength(100));
+      expect(
+        processed.toSet(),
+        containsAll(List.generate(100, (index) => index)),
+      );
     });
 
     test('Should never exceed maxConcurrent tasks in flight', () async {
