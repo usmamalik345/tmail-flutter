@@ -81,7 +81,7 @@ class UploadController extends BaseController {
                 failure.uploadId,
                 (currentState) => currentState?.copyWith(uploadStatus: UploadFileStatus.uploadFailed));
             deleteFileUploaded(failure.uploadId);
-            _showToastMessageWhenUploadAttachmentsFailure(failure);
+            _showToastMessageWhenUploadAttachmentsFailure();
             consumeState(Stream.value((Left(failure))));
           }
         },
@@ -277,6 +277,13 @@ class UploadController extends BaseController {
     _refreshListUploadAttachmentState();
   }
 
+  /// Drops a failed drive transfer's chip and tells the user, mirroring what
+  /// the Dio upload stream does for a failed upload.
+  void failDriveTransfer(UploadTaskId taskId) {
+    deleteFileUploaded(taskId);
+    _showToastMessageWhenUploadAttachmentsFailure();
+  }
+
   void completeUploadedFile({
     required UploadTaskId taskId,
     required Attachment attachment,
@@ -361,7 +368,7 @@ class UploadController extends BaseController {
       .toSet();
   }
 
-  void _showToastMessageWhenUploadAttachmentsFailure(ErrorAttachmentUploadState failure) {
+  void _showToastMessageWhenUploadAttachmentsFailure() {
     if (currentContext != null && currentOverlayContext != null) {
       appToast.showToastErrorMessage(
         currentOverlayContext!,

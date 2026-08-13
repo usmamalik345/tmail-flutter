@@ -151,7 +151,12 @@ class DriveTransferPipeline {
       // A failing file drops its own chip and nothing else: an expired link or
       // a cancelled transfer must not take its siblings down with it.
       logWarning('DriveTransferPipeline::_transferOne(${doc.name}): $error');
-      _uploadController.deleteFileUploaded(taskId);
+      if (cancelToken.isCancelled) {
+        // The user asked for this one to stop, so no error toast.
+        _uploadController.deleteFileUploaded(taskId);
+      } else {
+        _uploadController.failDriveTransfer(taskId);
+      }
     }
   }
 
