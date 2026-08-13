@@ -1,9 +1,8 @@
 
 enum UploadFileStatus {
   waiting,
-  /// Staging leg of a drive transfer, before its upload starts. Only drive
-  /// attachments enter this state.
-  downloading,
+  /// Staging leg of a drive transfer, before its upload starts.
+  fetching,
   uploading,
   uploadFailed,
   succeed

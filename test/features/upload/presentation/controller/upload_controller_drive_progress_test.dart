@@ -90,7 +90,7 @@ void main() {
 
   group('UploadController::drive transfer chip::', () {
     test('Should show the placeholder as downloading at zero progress', () {
-      expect(statusOf(taskId), UploadFileStatus.downloading);
+      expect(statusOf(taskId), UploadFileStatus.fetching);
       expect(progressOf(taskId), 0);
       expect(uploadController.listUploadAttachments, hasLength(1));
     });
@@ -113,7 +113,7 @@ void main() {
       );
 
       expect(progressOf(taskId), 50);
-      expect(statusOf(taskId), UploadFileStatus.downloading);
+      expect(statusOf(taskId), UploadFileStatus.fetching);
     });
 
     test('Should leave progress untouched when the total length is unknown', () {

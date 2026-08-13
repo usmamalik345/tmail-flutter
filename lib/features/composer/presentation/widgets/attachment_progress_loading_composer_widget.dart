@@ -27,7 +27,7 @@ class AttachmentProgressLoadingComposerWidget extends StatelessWidget {
             backgroundColor: AttachmentProgressLoadingComposerWidgetStyle.backgroundColor,
           ),
         );
-      case UploadFileStatus.downloading:
+      case UploadFileStatus.fetching:
         return _buildPercentIndicator(
           AttachmentProgressLoadingComposerWidgetStyle.downloadProgressColor,
         );

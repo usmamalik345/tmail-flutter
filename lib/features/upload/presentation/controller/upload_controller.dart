@@ -230,7 +230,7 @@ class UploadController extends BaseController {
         fileSize: fileSize,
         type: mimeType,
       ),
-      uploadStatus: UploadFileStatus.downloading,
+      uploadStatus: UploadFileStatus.fetching,
       cancelToken: cancelToken,
     ));
     _refreshListUploadAttachmentState();
