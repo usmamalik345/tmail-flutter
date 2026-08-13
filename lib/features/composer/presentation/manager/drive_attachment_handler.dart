@@ -6,6 +6,12 @@ import 'package:tmail_ui_user/main/utils/toast_manager.dart';
 import 'package:workplace/domain/entity/drive_document.dart';
 import 'package:workplace/presentation/model/drive_pick_state.dart';
 
+/// Inserts [html] into the composer's editor.
+typedef InsertHtmlCallback = Future<void> Function(String html);
+
+/// Starts drive transfers for [docs], returning whether it took them.
+typedef StartDriveTransfersCallback = Future<bool> Function(List<DriveDocument> docs);
+
 class DriveAttachmentHandler {
   DriveAttachmentHandler();
 
@@ -24,8 +30,8 @@ class DriveAttachmentHandler {
   /// transfers existed.
   Future<void> handleDrivePickResult(
     List<DriveDocument> result, {
-    required Future<void> Function(String html) insertHtml,
-    required Future<bool> Function(List<DriveDocument> docs) startDriveTransfers,
+    required InsertHtmlCallback insertHtml,
+    required StartDriveTransfersCallback startDriveTransfers,
     AppLocalizations? appLocalizations,
   }) async {
     if (result.isEmpty) {
@@ -68,7 +74,7 @@ class DriveAttachmentHandler {
 
   Future<void> insertDriveLinkHtml(
     List<DriveDocument> docs, {
-    required Future<void> Function(String html) insertHtml,
+    required InsertHtmlCallback insertHtml,
     AppLocalizations? appLocalizations,
   }) async {
     await insertHtml(
