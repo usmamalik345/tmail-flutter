@@ -248,6 +248,161 @@ void main() {
     });
   });
 
+  group('AttachmentUploadValidationService::validateBytes', () {
+    testWidgets('Should run onAllowed when the declared total is within limits',
+        (tester) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      context = tester.element(find.byType(SizedBox));
+      final feedback = _RecordingFeedback();
+      var allowedCalled = false;
+
+      await buildService(
+        stateSource: const _FakeStateSource(hardLimitBytes: 10000),
+        feedback: feedback,
+      ).validateBytes(
+        context: context,
+        proposedAllAttachmentBytes: 300,
+        proposedRegularAttachmentBytes: 300,
+        onAllowed: () => allowedCalled = true,
+      );
+
+      expect(allowedCalled, isTrue);
+      expect(feedback.failureShown, isNull);
+      expect(feedback.promptsAsked, isEmpty);
+    });
+
+    testWidgets('Should show failure and skip onAllowed past the hard limit',
+        (tester) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      context = tester.element(find.byType(SizedBox));
+      final feedback = _RecordingFeedback();
+      var allowedCalled = false;
+
+      await buildService(
+        stateSource: const _FakeStateSource(hardLimitBytes: 500),
+        feedback: feedback,
+      ).validateBytes(
+        context: context,
+        proposedAllAttachmentBytes: 600,
+        proposedRegularAttachmentBytes: 600,
+        onAllowed: () => allowedCalled = true,
+      );
+
+      expect(allowedCalled, isFalse);
+      expect(feedback.failureShown, isA<MaxEmailAttachmentSizeExceeded>());
+    });
+
+    testWidgets('Should run onAllowed once the user confirms the warning',
+        (tester) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      context = tester.element(find.byType(SizedBox));
+      final feedback = _RecordingFeedback();
+      var allowedCalled = false;
+
+      await buildService(
+        stateSource: const _FakeStateSource(warningLimitBytes: 500),
+        feedback: feedback,
+      ).validateBytes(
+        context: context,
+        proposedAllAttachmentBytes: 600,
+        proposedRegularAttachmentBytes: 600,
+        onAllowed: () => allowedCalled = true,
+      );
+
+      expect(allowedCalled, isTrue);
+      expect(feedback.promptsAsked, [isA<LargeRegularAttachmentWarning>()]);
+    });
+
+    testWidgets('Should skip onAllowed when the user declines the warning',
+        (tester) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      context = tester.element(find.byType(SizedBox));
+      final feedback = _RecordingFeedback(confirmed: false);
+      var allowedCalled = false;
+
+      await buildService(
+        stateSource: const _FakeStateSource(warningLimitBytes: 500),
+        feedback: feedback,
+      ).validateBytes(
+        context: context,
+        proposedAllAttachmentBytes: 600,
+        proposedRegularAttachmentBytes: 600,
+        onAllowed: () => allowedCalled = true,
+      );
+
+      expect(allowedCalled, isFalse);
+      expect(feedback.promptsAsked, [isA<LargeRegularAttachmentWarning>()]);
+    });
+
+    testWidgets('Should not warn when only the inline half exceeds the warning limit',
+        (tester) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      context = tester.element(find.byType(SizedBox));
+      final feedback = _RecordingFeedback();
+      var allowedCalled = false;
+
+      await buildService(
+        stateSource: const _FakeStateSource(warningLimitBytes: 500),
+        feedback: feedback,
+      ).validateBytes(
+        context: context,
+        proposedAllAttachmentBytes: 600,
+        proposedRegularAttachmentBytes: 0,
+        onAllowed: () => allowedCalled = true,
+      );
+
+      expect(allowedCalled, isTrue);
+      expect(feedback.promptsAsked, isEmpty);
+    });
+
+    testWidgets('Should count the proposed bytes on top of what is already attached',
+        (tester) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      context = tester.element(find.byType(SizedBox));
+      final feedback = _RecordingFeedback();
+      var allowedCalled = false;
+
+      await buildService(
+        stateSource: const _FakeStateSource(
+          currentAllAttachmentBytes: 400,
+          currentRegularAttachmentBytes: 400,
+          warningLimitBytes: 500,
+        ),
+        feedback: feedback,
+      ).validateBytes(
+        context: context,
+        proposedAllAttachmentBytes: 200,
+        proposedRegularAttachmentBytes: 200,
+        onAllowed: () => allowedCalled = true,
+      );
+
+      expect(allowedCalled, isTrue);
+      expect(feedback.promptsAsked, [isA<LargeRegularAttachmentWarning>()]);
+    });
+
+    test('Should run onAllowed with no BuildContext to build feedback from', () async {
+      var feedbackBuilderCalled = false;
+      var allowedCalled = false;
+
+      final service = AttachmentUploadValidationService(
+        stateSource: const _FakeStateSource(hardLimitBytes: 10000),
+        feedbackBuilder: (_) {
+          feedbackBuilderCalled = true;
+          return _RecordingFeedback();
+        },
+      );
+
+      await service.validateBytes(
+        proposedAllAttachmentBytes: 300,
+        proposedRegularAttachmentBytes: 300,
+        onAllowed: () => allowedCalled = true,
+      );
+
+      expect(allowedCalled, isTrue);
+      expect(feedbackBuilderCalled, isFalse);
+    });
+  });
+
   group('AttachmentUploadValidationService without a BuildContext', () {
     test(
         'Should still call onAllowed and never build feedback\n'
