@@ -32,28 +32,23 @@ typedef ResolveUploadUri = Uri? Function();
 /// keeps its link-only behaviour.
 class DriveTransferPipeline {
   DriveTransferPipeline({
-    required AttachmentUploadValidationService validationService,
-    required FileUploader fileUploader,
-    required Uuid uuid,
-    required DriveTransferStrategyFactory strategyFactory,
-    required DriveDocumentTransferRunner transferRunner,
-    required ResolveUploadUri resolveUploadUri,
-  })  : _validationService = validationService,
-        _fileUploader = fileUploader,
-        _uuid = uuid,
-        _strategyFactory = strategyFactory,
-        _transferRunner = transferRunner,
-        _resolveUploadUri = resolveUploadUri;
+    required this.validationService,
+    required this.fileUploader,
+    required this.uuid,
+    required this.strategyFactory,
+    required this.transferRunner,
+    required this.resolveUploadUri,
+  });
 
-  final AttachmentUploadValidationService _validationService;
-  final FileUploader _fileUploader;
-  final Uuid _uuid;
-  final DriveDocumentTransferRunner _transferRunner;
+  final AttachmentUploadValidationService validationService;
+  final FileUploader fileUploader;
+  final Uuid uuid;
+  final DriveDocumentTransferRunner transferRunner;
 
   /// App-wide singleton from `CoreBindings`: it caches capability detection
   /// and sweeps stale staging once, so it outlives any one composer.
-  final DriveTransferStrategyFactory _strategyFactory;
-  final ResolveUploadUri _resolveUploadUri;
+  final DriveTransferStrategyFactory strategyFactory;
+  final ResolveUploadUri resolveUploadUri;
 
   /// Returns whether this pipeline took responsibility for [docs]. `false`
   /// means nothing was attempted — no staging strategy on this platform, or
@@ -68,18 +63,18 @@ class DriveTransferPipeline {
   Future<bool> transfer(List<DriveDocument> docs) async {
     if (docs.isEmpty) return false;
 
-    final uploadUri = _resolveUploadUri();
+    final uploadUri = resolveUploadUri();
     if (uploadUri == null) {
       logWarning('DriveTransferPipeline::transfer: no upload URI available');
       return false;
     }
 
-    if (!_transferRunner.canAuthenticate) {
+    if (!transferRunner.canAuthenticate) {
       logWarning('DriveTransferPipeline::transfer: no authorization header available');
       return false;
     }
 
-    final strategy = _strategyFactory.create(
+    final strategy = strategyFactory.create(
       uploader: ({
         required staged,
         required uploadUri,
@@ -98,7 +93,7 @@ class DriveTransferPipeline {
     final declaredTotalBytes =
         docs.fold<int>(0, (total, doc) => total + doc.size);
 
-    await _validationService.validateBytes(
+    await validationService.validateBytes(
       // Drive documents are never inline, so both totals are the same sum.
       proposedAllAttachmentBytes: declaredTotalBytes,
       proposedRegularAttachmentBytes: declaredTotalBytes,
@@ -115,7 +110,7 @@ class DriveTransferPipeline {
     return runWithConcurrency(
       docs,
       strategy.maxConcurrentTransfers,
-      (doc) => _transferRunner.run(
+      (doc) => transferRunner.run(
         doc: doc,
         uploadUri: uploadUri,
         strategy: strategy,
@@ -159,8 +154,8 @@ class DriveTransferPipeline {
     });
 
     try {
-      return await _fileUploader.uploadAttachment(
-        UploadTaskId(_uuid.v4()),
+      return await fileUploader.uploadAttachment(
+        UploadTaskId(uuid.v4()),
         fileInfo,
         uploadUri,
         cancelToken: cancelToken,
