@@ -175,5 +175,45 @@ void main() {
       expect(processed, containsAllInOrder([0, 1, 2]));
       expect(processed, hasLength(3));
     });
+
+    test('Should not spawn a worker per unit of a huge maxConcurrent', () async {
+      final processed = <int>[];
+
+      await runWithConcurrency(
+        [0, 1, 2],
+        1 << 30,
+        (item) async => processed.add(item),
+      );
+
+      expect(processed, containsAllInOrder([0, 1, 2]));
+      expect(processed, hasLength(3));
+    });
+
+    test('Should drain a large batch under a large concurrency', () async {
+      const itemCount = 100000;
+      const maxConcurrent = 10000;
+
+      var inFlight = 0;
+      var peakInFlight = 0;
+      final processed = <int>[];
+
+      await runWithConcurrency(
+        List.generate(itemCount, (index) => index),
+        maxConcurrent,
+        (item) async {
+          inFlight++;
+          peakInFlight = inFlight > peakInFlight ? inFlight : peakInFlight;
+
+          await Future<void>.delayed(Duration.zero);
+          processed.add(item);
+
+          inFlight--;
+        },
+      );
+
+      expect(processed, hasLength(itemCount));
+      expect(processed.toSet(), hasLength(itemCount));
+      expect(peakInFlight, lessThanOrEqualTo(maxConcurrent));
+    });
   });
 }

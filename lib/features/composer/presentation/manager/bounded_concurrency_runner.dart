@@ -6,23 +6,32 @@ import 'dart:async';
 /// current item finishes — no "start a batch, wait for all of it, start the
 /// next" stalling. [task] is expected to handle its own failures; an error it
 /// lets escape aborts that worker only, and the others keep draining.
+///
+/// A worker is only spawned once there is an item for it to own, so an
+/// oversized [maxConcurrent] costs nothing: the worker count never exceeds the
+/// item count.
 Future<void> runWithConcurrency<T>(
   Iterable<T> items,
   int maxConcurrent,
   Future<void> Function(T item) task,
 ) {
   final iterator = items.iterator;
-  final workerCount = maxConcurrent < 1 ? 1 : maxConcurrent;
-  return Future.wait(
-    List.generate(workerCount, (_) => _drainQueue(iterator, task)),
-  );
+  final maxWorkers = maxConcurrent < 1 ? 1 : maxConcurrent;
+  final workers = <Future<void>>[];
+  while (workers.length < maxWorkers && iterator.moveNext()) {
+    workers.add(_drainQueue(iterator.current, iterator, task));
+  }
+  return Future.wait(workers);
 }
 
-/// One worker: pulls from the shared [iterator] until it is exhausted.
+/// One worker: runs [first], then pulls from the shared [iterator] until it is
+/// exhausted.
 Future<void> _drainQueue<T>(
+  T first,
   Iterator<T> iterator,
   Future<void> Function(T item) task,
 ) async {
+  await task(first);
   while (iterator.moveNext()) {
     await task(iterator.current);
   }
