@@ -4,6 +4,7 @@ import 'package:core/data/constants/constant.dart';
 import 'package:core/presentation/views/html_viewer/html_content_viewer_widget.dart';
 import 'package:core/utils/html/html_interaction.dart';
 import 'package:core/utils/html/html_utils.dart';
+import 'package:core/utils/html/webview_asset_base_url.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -36,10 +37,15 @@ class IosHtmlContentViewerWidget extends StatefulWidget {
 
 class _IosHtmlContentViewerWidgetState extends State<IosHtmlContentViewerWidget> {
 
+  WebUri? _assetsBaseUrl;
+
   @override
   Widget build(BuildContext context) {
     return InAppWebView(
-      initialSettings: InAppWebViewSettings(transparentBackground: true),
+      initialSettings: InAppWebViewSettings(
+        transparentBackground: true,
+        isInspectable: kDebugMode,
+      ),
       onWebViewCreated: _onWebViewCreated,
       shouldOverrideUrlLoading: _shouldOverrideUrlLoading,
       gestureRecognizers: {
@@ -49,13 +55,19 @@ class _IosHtmlContentViewerWidgetState extends State<IosHtmlContentViewerWidget>
   }
 
   Future<void> _onWebViewCreated(InAppWebViewController controller) async {
-    await controller.loadData(data: HtmlUtils.generateHtmlDocument(
-      content: widget.contentHtml,
-      direction: widget.direction,
-      javaScripts: HtmlInteraction.scriptsHandleLazyLoadingBackgroundImage,
-      useDefaultFontStyle: widget.useDefaultFontStyle,
-      fontSize: 16,
-    ));
+    _assetsBaseUrl = await WebViewAssetBaseUrl.instance.flutterAssetsBaseUrl();
+    // No allowingReadAccessTo: on iOS it triggers a competing loadFileURL
+    // navigation that starves the real page load. baseUrl alone is enough.
+    await controller.loadData(
+      data: HtmlUtils.generateHtmlDocument(
+        content: widget.contentHtml,
+        direction: widget.direction,
+        javaScripts: HtmlInteraction.scriptsHandleLazyLoadingBackgroundImage,
+        useDefaultFontStyle: widget.useDefaultFontStyle,
+        fontSize: 16,
+      ),
+      baseUrl: _assetsBaseUrl,
+    );
   }
 
   Future<NavigationActionPolicy?> _shouldOverrideUrlLoading(
@@ -69,6 +81,11 @@ class _IosHtmlContentViewerWidgetState extends State<IosHtmlContentViewerWidget>
     }
 
     if (navigationAction.isForMainFrame && url == 'about:blank') {
+      return NavigationActionPolicy.ALLOW;
+    }
+
+    // Not a user-followed link — let the baseUrl's own navigation through.
+    if (_assetsBaseUrl != null && url == _assetsBaseUrl.toString()) {
       return NavigationActionPolicy.ALLOW;
     }
 

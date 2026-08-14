@@ -9,6 +9,7 @@ import flutter_local_notifications
     var notificationInteractionChannel: FlutterMethodChannel?
     var fcmMethodChannel: FlutterMethodChannel?
     var currentEmailId: String?
+    let webViewAssetBaseUrl = WebViewAssetBaseUrl()
     
     override func application(
         _ application: UIApplication,
@@ -40,9 +41,10 @@ import flutter_local_notifications
 
     func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
         GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-        
+
         createNotificationInteractionChannel(engineBridge.applicationRegistrar.messenger())
         createFcmMethodChannel(engineBridge.applicationRegistrar.messenger())
+        webViewAssetBaseUrl.register(engineBridge.applicationRegistrar.messenger())
     }
     
     override func applicationWillTerminate(_ application: UIApplication) {

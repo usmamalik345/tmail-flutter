@@ -23,5 +23,6 @@ class MainActivity: FlutterFragmentActivity() {
 
         NotificationGroup().register(flutterEngine, applicationContext)
         AndroidSelectionHandles(this).register(flutterEngine)
+        WebViewAssetBaseUrl().register(flutterEngine)
     }
 }

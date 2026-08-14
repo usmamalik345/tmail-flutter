@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:core/utils/html/html_template.dart';
+import 'package:core/utils/platform_info.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:linagora_design_flutter/style/linagora_text_theme.dart';
 
@@ -9,14 +10,24 @@ import 'package:linagora_design_flutter/style/linagora_text_theme.dart';
 /// outside Flutter, so its font is referenced by URL instead of through the
 /// theme. Nothing links the two, and a missing file only shows up as a 404 at
 /// runtime — these tests are the link.
+///
+/// `HtmlTemplate.fontFaceStyle` is platform-conditional (web keeps a leading
+/// `assets/` URL segment, mobile does not — see its doc comment), so most
+/// assertions below pin the platform explicitly via `PlatformInfo
+/// .isTestingForWeb` rather than relying on the test harness's ambient
+/// `defaultTargetPlatform` (which defaults to `android`, i.e. "mobile", for
+/// plain VM tests).
 void main() {
-  final fontUrls = RegExp(r'url\("([^"]+)"\)')
+  setUp(() => PlatformInfo.isTestingForWeb = true);
+  tearDown(() => PlatformInfo.isTestingForWeb = false);
+
+  List<String> fontUrls() => RegExp(r'url\("([^"]+)"\)')
       .allMatches(HtmlTemplate.fontFaceStyle)
       .map((match) => match.group(1)!)
       .toList();
 
   test('font-face rules are declared', () {
-    expect(fontUrls, isNotEmpty);
+    expect(fontUrls(), isNotEmpty);
   });
 
   test('uses the same font family as the Flutter theme', () {
@@ -26,7 +37,7 @@ void main() {
     expect(themeFamily, endsWith('/${HtmlTemplate.fontFamilyApp}'));
 
     final package = themeFamily!.split('/')[1];
-    for (final url in fontUrls) {
+    for (final url in fontUrls()) {
       expect(url, startsWith('assets/packages/$package/'),
           reason: '$url does not come from the design system package');
     }
@@ -37,7 +48,7 @@ void main() {
     final packagePubspec =
         File.fromUri(packageRoot.resolve('pubspec.yaml')).readAsStringSync();
 
-    for (final url in fontUrls) {
+    for (final url in fontUrls()) {
       // assets/packages/<package>/<pathInsidePackage>
       final pathInsidePackage = url.split('/').skip(3).join('/');
       final file = File.fromUri(packageRoot.resolve(pathInsidePackage));
@@ -53,10 +64,40 @@ void main() {
 
   test('does not point at app-local font assets', () {
     // The app no longer ships its own font files; the design system does.
-    for (final url in fontUrls) {
+    for (final url in fontUrls()) {
       expect(url, isNot(startsWith('assets/fonts/')),
           reason: '$url expects a font the app no longer bundles');
     }
+  });
+
+  group('mobile vs web asset URL convention', () {
+    // Flutter web serves the `flutter_assets/` bundle mounted under an
+    // `/assets/` URL prefix (see `build/web/assets/packages/...`), so a
+    // relative URL needs that leading `assets/` segment to resolve there.
+    test('web keeps the leading assets/ segment', () {
+      PlatformInfo.isTestingForWeb = true;
+
+      for (final url in fontUrls()) {
+        expect(url, startsWith('assets/packages/'),
+            reason: '$url should keep the web assets/ prefix');
+      }
+    });
+
+    // On mobile there is no such prefix: `InAppWebView`'s baseUrl is rooted
+    // directly at the `flutter_assets/` directory (confirmed against a built
+    // debug APK: `assets/flutter_assets/packages/linagora_design_flutter/...`
+    // inside the APK, with no extra `assets/` segment once that directory is
+    // the WebView's origin). A URL still carrying the web `assets/` prefix
+    // 404s there.
+    test('mobile has no leading assets/ segment', () {
+      PlatformInfo.isTestingForWeb = false;
+
+      for (final url in fontUrls()) {
+        expect(url, startsWith('packages/'),
+            reason: '$url still carries the web-only assets/ prefix and '
+                'will 404 against the mobile flutter_assets/ baseUrl');
+      }
+    });
   });
 }
 

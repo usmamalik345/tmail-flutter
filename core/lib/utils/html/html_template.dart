@@ -1,12 +1,13 @@
 
 import 'package:core/presentation/constants/constants_ui.dart';
+import 'package:core/utils/platform_info.dart';
 import 'package:flutter/material.dart';
 
 class HtmlTemplate {
-  static const String printDocumentCssStyle = '''
-    <style> 
-      $fontFaceStyle 
-      
+  static String get printDocumentCssStyle => '''
+    <style>
+      $fontFaceStyle
+
       body,td,div,p,a,input {
         font-family: '$fontFamilyApp', sans-serif;
       }
@@ -49,23 +50,20 @@ class HtmlTemplate {
      </style>
   ''';
 
-  /// HTML content is rendered outside Flutter, so the font can only be reached
-  /// by URL and the design system asset path has to be spelled out here. Keep
-  /// it aligned with the family resolved by `ThemeUtils`.
-  ///
-  /// Relative (no leading `/`) so it resolves against `<base href>` on web,
-  /// including non-root preview deploys. On mobile this alone is not enough:
-  /// `InAppWebView.loadData()` has no base URL by default (resolves against
-  /// `about:blank`), so a relative path still 404s there. Fixing that needs
-  /// wiring a base URL into `HtmlContentViewer` / `IosHtmlContentViewerWidget`
-  /// (`WebViewAssetLoader` on Android, `allowingReadAccessTo` on iOS) — not
-  /// done yet, tracked as a follow-up.
-  static const String _fontAssetDirectory =
-      'assets/packages/linagora_design_flutter/assets/fonts';
+  /// Web mounts `flutter_assets/` under an `/assets/` URL prefix; mobile's
+  /// WebView `baseUrl` points directly at `flutter_assets/`, so the same
+  /// prefix there 404s.
+  static String get _fontAssetDirectory {
+    const packageDirectory =
+        'packages/linagora_design_flutter/assets/fonts';
+    return PlatformInfo.isMobile
+        ? packageDirectory
+        : 'assets/$packageDirectory';
+  }
 
   static const String fontFamilyApp = ConstantsUI.fontApp;
 
-  static const String fontFaceStyle = '''
+  static String get fontFaceStyle => '''
     @font-face {
       font-family: '$fontFamilyApp';
       src: url("$_fontAssetDirectory/${ConstantsUI.fontFileRegular}.ttf") format("truetype");
@@ -122,7 +120,7 @@ class HtmlTemplate {
     }
   ''';
 
-  static const String previewEMLFileCssStyle = '''
+  static String get previewEMLFileCssStyle => '''
     <style> 
       $fontFaceStyle
 

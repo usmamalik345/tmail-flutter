@@ -7,6 +7,7 @@ import 'package:core/utils/app_logger.dart';
 import 'package:core/utils/html/html_interaction.dart';
 import 'package:core/utils/html/html_template.dart';
 import 'package:core/utils/html/html_utils.dart';
+import 'package:core/utils/html/webview_asset_base_url.dart';
 import 'package:core/utils/platform_info.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -84,6 +85,7 @@ class HtmlContentViewState extends State<HtmlContentViewer> with AutomaticKeepAl
   final _loadingBarNotifier = ValueNotifier(true);
 
   String? _htmlData;
+  WebUri? _assetsBaseUrl;
 
   InAppWebViewController get webViewController => _webViewController;
 
@@ -97,6 +99,7 @@ class HtmlContentViewState extends State<HtmlContentViewer> with AutomaticKeepAl
       disableHorizontalScroll: widget.disableScrolling,
       disableVerticalScroll: widget.disableScrolling,
       horizontalScrollBarEnabled: !widget.disableScrolling,
+      isInspectable: kDebugMode,
     );
 
     _gestureRecognizers = {
@@ -214,7 +217,13 @@ class HtmlContentViewState extends State<HtmlContentViewer> with AutomaticKeepAl
     log('_HtmlContentViewState::_onWebViewCreated:');
     _webViewController = controller;
 
-    await controller.loadData(data: _htmlData ?? '');
+    _assetsBaseUrl = await WebViewAssetBaseUrl.instance.flutterAssetsBaseUrl();
+    // No allowingReadAccessTo: on iOS it triggers a competing loadFileURL
+    // navigation that starves the real page load. baseUrl alone is enough.
+    await controller.loadData(
+      data: _htmlData ?? '',
+      baseUrl: _assetsBaseUrl,
+    );
 
     if (!widget.disableScrolling) {
       controller.addJavaScriptHandler(
@@ -368,6 +377,11 @@ class HtmlContentViewState extends State<HtmlContentViewer> with AutomaticKeepAl
     }
 
     if (navigationAction.isForMainFrame && url == 'about:blank') {
+      return NavigationActionPolicy.ALLOW;
+    }
+
+    // Not a user-followed link — let the baseUrl's own navigation through.
+    if (_assetsBaseUrl != null && url == _assetsBaseUrl.toString()) {
       return NavigationActionPolicy.ALLOW;
     }
 
