@@ -58,7 +58,10 @@ class DriveDocumentTransferRunner {
         onDownloadProgress: (received, total) {
           // The link is sending more than the backend declared, so the size
           // the batch was validated against no longer holds: stop now.
-          if (doc.size > 0 && received > doc.size) {
+          // `doc.size` is 0 when the backend declared nothing, and the
+          // response's own total is then the only ceiling there is.
+          final declaredSize = doc.size > 0 ? doc.size : total;
+          if (declaredSize > 0 && received > declaredSize) {
             exceededDeclaredSize = true;
             cancelToken.cancel();
             return;
