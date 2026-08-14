@@ -2,6 +2,7 @@ import 'package:core/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:tmail_ui_user/features/upload/domain/model/upload_task_id.dart';
 import 'package:tmail_ui_user/features/upload/presentation/controller/upload_controller.dart';
+import 'package:tmail_ui_user/features/upload/presentation/model/drive_transfer_placeholder.dart';
 import 'package:uuid/uuid.dart';
 import 'package:workplace/data/datasource/drive_transfer/drive_transfer_strategy.dart';
 import 'package:workplace/data/datasource/drive_transfer/staged_drive_file.dart';
@@ -11,8 +12,23 @@ import 'package:workplace/domain/entity/drive_document.dart';
 /// there is none to send.
 typedef ResolveAuthHeader = String? Function();
 
-/// Runs one drive document through both legs of its transfer: chip placeholder,
-/// download and upload progress, then completion or failure.
+/// A document whose chip is already on screen while it waits for a concurrency
+/// slot. Its identity is minted at enqueue time, so it can be cancelled before
+/// its transfer ever starts.
+class PendingDriveTransfer {
+  final DriveDocument doc;
+  final UploadTaskId taskId;
+  final CancelToken cancelToken;
+
+  const PendingDriveTransfer({
+    required this.doc,
+    required this.taskId,
+    required this.cancelToken,
+  });
+}
+
+/// Runs one drive document through both legs of its transfer: download and
+/// upload progress, then completion or failure.
 ///
 /// Every failure — staging, upload, oversized download — drops that file's chip
 /// and toasts; a user cancel drops the chip silently. Siblings are unaffected.
@@ -31,25 +47,45 @@ class DriveDocumentTransferRunner {
   /// so no file is downloaded only to be rejected by the upload endpoint.
   bool get canAuthenticate => resolveAuthHeader()?.trim().isNotEmpty == true;
 
+  /// Puts a chip on screen for every [docs] entry at once, before any slot is
+  /// free, and returns the handles to transfer them by.
+  List<PendingDriveTransfer> enqueue(List<DriveDocument> docs) {
+    final pendingTransfers = docs
+        .map((doc) => PendingDriveTransfer(
+              doc: doc,
+              taskId: UploadTaskId(uuid.v4()),
+              cancelToken: CancelToken(),
+            ))
+        .toList();
+
+    uploadController.addDownloadingPlaceholders(pendingTransfers
+        .map((pending) => DriveTransferPlaceholder(
+              taskId: pending.taskId,
+              fileName: pending.doc.name,
+              fileSize: pending.doc.size,
+              mimeType: pending.doc.mimeType,
+              cancelToken: pending.cancelToken,
+            ))
+        .toList());
+
+    return pendingTransfers;
+  }
+
   /// Returns whether the document became an attachment: `false` covers both a
   /// failed transfer and one the user cancelled, so a batch only reports what
   /// actually landed.
   Future<bool> run({
-    required DriveDocument doc,
+    required PendingDriveTransfer pending,
     required Uri uploadUri,
     required DriveTransferStrategy<StagedDriveFile> strategy,
   }) async {
-    final taskId = UploadTaskId(uuid.v4());
-    final cancelToken = CancelToken();
+    final doc = pending.doc;
+    final taskId = pending.taskId;
+    final cancelToken = pending.cancelToken;
     bool exceededDeclaredSize = false;
 
-    uploadController.addDownloadingPlaceholder(
-      taskId: taskId,
-      fileName: doc.name,
-      fileSize: doc.size,
-      mimeType: doc.mimeType,
-      cancelToken: cancelToken,
-    );
+    // Cancelled while queued, so there is nothing left to download.
+    if (cancelToken.isCancelled) return false;
 
     try {
       final attachment = await strategy.transfer(DriveTransferRequest(

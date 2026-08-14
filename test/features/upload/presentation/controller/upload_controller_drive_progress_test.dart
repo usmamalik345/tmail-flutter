@@ -18,6 +18,7 @@ import 'package:tmail_ui_user/features/manage_account/data/local/language_cache_
 import 'package:tmail_ui_user/features/manage_account/domain/usecases/log_out_oidc_interactor.dart';
 import 'package:tmail_ui_user/features/upload/domain/model/upload_task_id.dart';
 import 'package:tmail_ui_user/features/upload/presentation/controller/upload_controller.dart';
+import 'package:tmail_ui_user/features/upload/presentation/model/drive_transfer_placeholder.dart';
 import 'package:tmail_ui_user/features/upload/presentation/model/upload_file_status.dart';
 import 'package:tmail_ui_user/main/bindings/network/binding_tag.dart';
 import 'package:tmail_ui_user/main/utils/toast_manager.dart';
@@ -58,6 +59,20 @@ void main() {
   int? progressOf(UploadTaskId id) =>
       uploadController.getUploadFileId(id)?.uploadingProgress;
 
+  DriveTransferPlaceholder placeholderOf(
+    UploadTaskId id, {
+    String fileName = 'Photo.jpg',
+    String? mimeType,
+    CancelToken? cancelToken,
+  }) =>
+      DriveTransferPlaceholder(
+        taskId: id,
+        fileName: fileName,
+        fileSize: 2000,
+        mimeType: mimeType,
+        cancelToken: cancelToken,
+      );
+
   setUp(() {
     Get.testMode = true;
     Get.put<CachingManager>(MockCachingManager());
@@ -79,21 +94,52 @@ void main() {
     Get.put<TwakeAppManager>(MockTwakeAppManager());
 
     uploadController = Get.put(UploadController(MockUploadAttachmentInteractor()));
-    uploadController.addDownloadingPlaceholder(
-      taskId: taskId,
-      fileName: 'Photo.jpg',
-      fileSize: 2000,
-      mimeType: 'image/jpeg',
-    );
+    uploadController.addDownloadingPlaceholders([
+      placeholderOf(taskId, fileName: 'Photo.jpg', mimeType: 'image/jpeg'),
+    ]);
   });
 
   tearDown(Get.reset);
 
   group('UploadController::drive transfer chip::', () {
-    test('Should show the placeholder as downloading at zero progress', () {
-      expect(statusOf(taskId), UploadFileStatus.fetching);
+    test('Should show the placeholder as queued at zero progress', () {
+      expect(statusOf(taskId), UploadFileStatus.waiting);
       expect(progressOf(taskId), 0);
       expect(uploadController.listUploadAttachments, hasLength(1));
+    });
+
+    test('Should flip a queued placeholder to downloading on its first byte', () {
+      uploadController.updateDownloadProgress(
+        taskId: taskId,
+        received: 100,
+        total: 2000,
+      );
+
+      expect(statusOf(taskId), UploadFileStatus.fetching);
+    });
+
+    test('Should show every picked file at once for a single rebuild', () async {
+      var emissions = 0;
+      uploadController.listUploadAttachments.listen((_) => emissions++);
+
+      uploadController.addDownloadingPlaceholders(
+        List.generate(10, (index) => placeholderOf(UploadTaskId('batch-$index'))),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(uploadController.listUploadAttachments, hasLength(11));
+      expect(emissions, 1);
+    });
+
+    test('Should do nothing when the picked batch is empty', () async {
+      var emissions = 0;
+      uploadController.listUploadAttachments.listen((_) => emissions++);
+
+      uploadController.addDownloadingPlaceholders([]);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(uploadController.listUploadAttachments, hasLength(1));
+      expect(emissions, 0);
     });
 
     test('Should map a half-received download onto a quarter of the bar', () {
@@ -278,18 +324,11 @@ void main() {
       pendingToken = CancelToken();
       doneToken = CancelToken();
 
-      uploadController.addDownloadingPlaceholder(
-        taskId: pendingTaskId,
-        fileName: 'Pending.pdf',
-        fileSize: 4000,
-        cancelToken: pendingToken,
-      );
-      uploadController.addDownloadingPlaceholder(
-        taskId: doneTaskId,
-        fileName: 'Done.pdf',
-        fileSize: 4000,
-        cancelToken: doneToken,
-      );
+      uploadController.addDownloadingPlaceholders([
+        placeholderOf(pendingTaskId,
+            fileName: 'Pending.pdf', cancelToken: pendingToken),
+        placeholderOf(doneTaskId, fileName: 'Done.pdf', cancelToken: doneToken),
+      ]);
       uploadController.completeUploadedFile(
         taskId: doneTaskId,
         attachment: attachmentOf('blob-done'),

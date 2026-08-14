@@ -114,12 +114,15 @@ class DriveTransferPipeline {
     DriveTransferStrategy<StagedDriveFile> strategy,
   ) async {
     var attachedCount = 0;
+    // Every chip goes up first: what the user sees must match what they picked,
+    // not how many files fit through the concurrency limit at once.
+    final pendingTransfers = transferRunner.enqueue(docs);
     await runWithConcurrency(
-      docs,
+      pendingTransfers,
       strategy.maxConcurrentTransfers,
-      (doc) async {
+      (pending) async {
         final attached = await transferRunner.run(
-          doc: doc,
+          pending: pending,
           uploadUri: uploadUri,
           strategy: strategy,
         );

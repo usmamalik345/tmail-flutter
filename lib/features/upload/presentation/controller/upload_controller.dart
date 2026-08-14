@@ -21,6 +21,7 @@ import 'package:tmail_ui_user/features/composer/domain/usecases/upload_attachmen
 import 'package:tmail_ui_user/features/upload/domain/model/upload_task_id.dart';
 import 'package:tmail_ui_user/features/upload/domain/state/attachment_upload_state.dart';
 import 'package:tmail_ui_user/features/upload/presentation/extensions/upload_attachment_extension.dart';
+import 'package:tmail_ui_user/features/upload/presentation/model/drive_transfer_placeholder.dart';
 import 'package:tmail_ui_user/features/upload/presentation/model/upload_file_state.dart';
 import 'package:tmail_ui_user/features/upload/presentation/model/upload_file_state_list.dart';
 import 'package:tmail_ui_user/features/upload/presentation/model/upload_file_status.dart';
@@ -216,26 +217,25 @@ class UploadController extends BaseController {
     _refreshListUploadAttachmentState();
   }
 
-  /// Shows a drive file's chip the moment its transfer starts, before any
-  /// bytes arrive. The placeholder carries the document's metadata as a
-  /// [FileInfo] so the chip renders its name, size and icon like any other.
-  void addDownloadingPlaceholder({
-    required UploadTaskId taskId,
-    required String fileName,
-    required int fileSize,
-    String? mimeType,
-    CancelToken? cancelToken,
-  }) {
-    _uploadingStateFiles.add(UploadFileState(
-      taskId,
+  /// Shows a chip for every picked drive file at once, before any transfer
+  /// starts, so the count on screen matches what the user selected however few
+  /// files are being moved concurrently. Each placeholder carries the
+  /// document's metadata as a [FileInfo] so the chip renders its name, size and
+  /// icon like any other, and starts as [UploadFileStatus.waiting] until its
+  /// first byte lands.
+  void addDownloadingPlaceholders(List<DriveTransferPlaceholder> placeholders) {
+    if (placeholders.isEmpty) return;
+
+    _uploadingStateFiles.addAll(placeholders.map((placeholder) => UploadFileState(
+      placeholder.taskId,
       file: FileInfo(
-        fileName: fileName,
-        fileSize: fileSize,
-        type: mimeType,
+        fileName: placeholder.fileName,
+        fileSize: placeholder.fileSize,
+        type: placeholder.mimeType,
       ),
-      uploadStatus: UploadFileStatus.fetching,
-      cancelToken: cancelToken,
-    ));
+      uploadStatus: UploadFileStatus.waiting,
+      cancelToken: placeholder.cancelToken,
+    )));
     _refreshListUploadAttachmentState();
   }
 
