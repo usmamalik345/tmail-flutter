@@ -1,5 +1,6 @@
 import 'package:core/core.dart';
 import 'package:core/utils/html/file_link_card_html_builder.dart';
+import 'package:tmail_ui_user/features/composer/presentation/extensions/drive_document_extension.dart';
 import 'package:tmail_ui_user/main/localizations/app_localizations.dart';
 import 'package:tmail_ui_user/main/routes/route_navigation.dart';
 import 'package:tmail_ui_user/main/utils/toast_manager.dart';
@@ -41,18 +42,12 @@ class DriveAttachmentHandler {
       );
       return;
     }
-    final linkDocs = result.where((doc) {
-      final link = doc.sharingLink;
-      return link != null && (!requireHttps || link.isScheme('https'));
-    }).toList();
-    // Exclusive with linkDocs by construction: a document carrying both links
-    // is a link, because a live document is worth more than a static copy.
-    final downloadableDocs = result.where((doc) {
-      final downloadLink = doc.downloadLink;
-      return doc.sharingLink == null &&
-          downloadLink != null &&
-          (!requireHttps || downloadLink.isScheme('https'));
-    }).toList();
+    final linkDocs = result
+        .where((doc) => doc.isAttachableAsLink(requireHttps: requireHttps))
+        .toList();
+    final downloadableDocs = result
+        .where((doc) => doc.isAttachableAsDownload(requireHttps: requireHttps))
+        .toList();
 
     // Both halves are dispatched: a mixed pick inserts its links and transfers
     // its downloadable docs.
@@ -105,9 +100,8 @@ class DriveAttachmentHandler {
     DriveDocument doc, {
     AppLocalizations? appLocalizations,
   }) {
-    final link = doc.sharingLink;
-    if (link == null) return null;
-    if (requireHttps && !link.isScheme('https')) return null;
+    if (!doc.isAttachableAsLink(requireHttps: requireHttps)) return null;
+    final link = doc.sharingLink!;
 
     final openInDriveLabel =
         appLocalizations?.openInDrive ?? _fallbackOpenInDriveLabel;
