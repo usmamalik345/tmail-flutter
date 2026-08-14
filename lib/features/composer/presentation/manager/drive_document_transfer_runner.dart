@@ -40,7 +40,7 @@ class DriveDocumentTransferRunner {
   }) async {
     final taskId = UploadTaskId(_uuid.v4());
     final cancelToken = CancelToken();
-    var exceededDeclaredSize = false;
+    bool exceededDeclaredSize = false;
 
     _uploadController.addDownloadingPlaceholder(
       taskId: taskId,
