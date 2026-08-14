@@ -18,31 +18,29 @@ typedef ResolveAuthHeader = String? Function();
 /// and toasts; a user cancel drops the chip silently. Siblings are unaffected.
 class DriveDocumentTransferRunner {
   DriveDocumentTransferRunner({
-    required UploadController uploadController,
-    required Uuid uuid,
-    required ResolveAuthHeader resolveAuthHeader,
-  })  : _uploadController = uploadController,
-        _uuid = uuid,
-        _resolveAuthHeader = resolveAuthHeader;
+    required this.uploadController,
+    required this.uuid,
+    required this.resolveAuthHeader,
+  });
 
-  final UploadController _uploadController;
-  final Uuid _uuid;
-  final ResolveAuthHeader _resolveAuthHeader;
+  final UploadController uploadController;
+  final Uuid uuid;
+  final ResolveAuthHeader resolveAuthHeader;
 
   /// Whether there is a session to upload with. Checked before a batch starts,
   /// so no file is downloaded only to be rejected by the upload endpoint.
-  bool get canAuthenticate => _resolveAuthHeader()?.trim().isNotEmpty == true;
+  bool get canAuthenticate => resolveAuthHeader()?.trim().isNotEmpty == true;
 
   Future<void> run({
     required DriveDocument doc,
     required Uri uploadUri,
     required DriveTransferStrategy<StagedDriveFile> strategy,
   }) async {
-    final taskId = UploadTaskId(_uuid.v4());
+    final taskId = UploadTaskId(uuid.v4());
     final cancelToken = CancelToken();
     bool exceededDeclaredSize = false;
 
-    _uploadController.addDownloadingPlaceholder(
+    uploadController.addDownloadingPlaceholder(
       taskId: taskId,
       fileName: doc.name,
       fileSize: doc.size,
@@ -66,20 +64,20 @@ class DriveDocumentTransferRunner {
             cancelToken.cancel();
             return;
           }
-          _uploadController.updateDownloadProgress(
+          uploadController.updateDownloadProgress(
             taskId: taskId,
             received: received,
             total: total,
           );
         },
-        onUploadProgress: (sent, total) => _uploadController.updateUploadProgress(
+        onUploadProgress: (sent, total) => uploadController.updateUploadProgress(
           taskId: taskId,
           sent: sent,
           total: total,
         ),
         cancelToken: cancelToken,
       ));
-      _uploadController.completeUploadedFile(
+      uploadController.completeUploadedFile(
         taskId: taskId,
         attachment: attachment,
       );
@@ -96,7 +94,7 @@ class DriveDocumentTransferRunner {
   /// The `Authorization` header for the current session, or a thrown
   /// [StateError] when there is none to send.
   String _requireAuthHeader() {
-    final authHeader = _resolveAuthHeader();
+    final authHeader = resolveAuthHeader();
     if (authHeader == null || authHeader.trim().isEmpty) {
       throw StateError('No authorization header for drive transfer');
     }
@@ -117,9 +115,9 @@ class DriveDocumentTransferRunner {
     );
     if (cancelToken.isCancelled && !exceededDeclaredSize) {
       // The user asked for this one to stop, so no error toast.
-      _uploadController.deleteFileUploaded(taskId);
+      uploadController.deleteFileUploaded(taskId);
     } else {
-      _uploadController.failDriveTransfer(taskId);
+      uploadController.failDriveTransfer(taskId);
     }
   }
 
