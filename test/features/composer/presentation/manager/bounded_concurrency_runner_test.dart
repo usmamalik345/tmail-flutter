@@ -11,18 +11,18 @@ void _completePending(List<Completer<void>> completers) {
   }
 }
 
+/// Runs [items] at [maxConcurrent] and returns them in completion order.
+Future<List<int>> _collectProcessed(List<int> items, int maxConcurrent) async {
+  final processed = <int>[];
+  await runWithConcurrency(items, maxConcurrent, (item) async => processed.add(item));
+  return processed;
+}
+
 void main() {
   group('runWithConcurrency::', () {
     test('Should process every item exactly once', () async {
-      final processed = <int>[];
-
-      await runWithConcurrency(
-        List.generate(100, (index) => index),
-        5,
-        (item) async {
-          processed.add(item);
-        },
-      );
+      final processed =
+          await _collectProcessed(List.generate(100, (index) => index), 5);
 
       expect(processed, hasLength(100));
       expect(processed.toSet(), hasLength(100));
@@ -129,14 +129,6 @@ void main() {
       expect(processed, containsAll([1, 2, 3]));
     });
 
-    test('Should treat a concurrency below one as a single worker', () async {
-      final processed = <int>[];
-
-      await runWithConcurrency([0, 1], 0, (item) async => processed.add(item));
-
-      expect(processed, [0, 1]);
-    });
-
     test('Should complete when items are empty', () async {
       var taskCalled = false;
 
@@ -151,43 +143,23 @@ void main() {
       expect(taskCalled, isFalse);
     });
 
-    test('Should treat negative concurrency as a single worker', () async {
-      final processed = <int>[];
+    // A concurrency outside [1, itemCount] must still drain the batch exactly
+    // once, whether it is clamped up to one worker or down to one per item.
+    const outOfRangeConcurrencies = {
+      0: 'below one',
+      -1: 'negative',
+      100: 'above the item count',
+      1 << 30: 'huge',
+    };
 
-      await runWithConcurrency(
-        [0, 1, 2],
-        -1,
-        (item) async => processed.add(item),
-      );
+    for (final entry in outOfRangeConcurrencies.entries) {
+      test('Should drain every item when maxConcurrent is ${entry.value}', () async {
+        final processed = await _collectProcessed([0, 1, 2], entry.key);
 
-      expect(processed, [0, 1, 2]);
-    });
-
-    test('Should process all items when maxConcurrent exceeds item count', () async {
-      final processed = <int>[];
-
-      await runWithConcurrency(
-        [0, 1, 2],
-        100,
-        (item) async => processed.add(item),
-      );
-
-      expect(processed, containsAllInOrder([0, 1, 2]));
-      expect(processed, hasLength(3));
-    });
-
-    test('Should not spawn a worker per unit of a huge maxConcurrent', () async {
-      final processed = <int>[];
-
-      await runWithConcurrency(
-        [0, 1, 2],
-        1 << 30,
-        (item) async => processed.add(item),
-      );
-
-      expect(processed, containsAllInOrder([0, 1, 2]));
-      expect(processed, hasLength(3));
-    });
+        expect(processed, containsAllInOrder([0, 1, 2]));
+        expect(processed, hasLength(3));
+      });
+    }
 
     test('Should drain a large batch under a large concurrency', () async {
       const itemCount = 100000;
