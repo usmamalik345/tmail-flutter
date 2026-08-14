@@ -191,6 +191,82 @@ void main() {
     });
   });
 
+  group('UploadController::progress rebuilds::', () {
+    late int emissions;
+
+    setUp(() {
+      emissions = 0;
+      uploadController.listUploadAttachments.listen((_) => emissions++);
+    });
+
+    test('Should rebuild at most once per percent over a chunked download', () async {
+      const total = 100000;
+      for (var received = 0; received <= total; received += 100) {
+        uploadController.updateDownloadProgress(
+          taskId: taskId,
+          received: received,
+          total: total,
+        );
+      }
+      await Future<void>.delayed(Duration.zero);
+
+      expect(progressOf(taskId), 50);
+      // 1000 callbacks, but the download leg only spans 51 distinct percents.
+      expect(emissions, lessThanOrEqualTo(51));
+    });
+
+    test('Should not rebuild when a chunk moves nothing the chip renders', () async {
+      uploadController.updateDownloadProgress(
+        taskId: taskId,
+        received: 1000,
+        total: 2000,
+      );
+      await Future<void>.delayed(Duration.zero);
+      final emissionsAfterFirst = emissions;
+
+      uploadController.updateDownloadProgress(
+        taskId: taskId,
+        received: 1000,
+        total: 2000,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emissions, emissionsAfterFirst);
+    });
+
+    test('Should still rebuild when only the status changes', () async {
+      uploadController.updateDownloadProgress(
+        taskId: taskId,
+        received: 2000,
+        total: 2000,
+      );
+      await Future<void>.delayed(Duration.zero);
+      final emissionsAfterDownload = emissions;
+
+      // Same percent, so only the flip to uploading justifies the rebuild.
+      uploadController.updateUploadProgress(taskId: taskId, sent: 0, total: 2000);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(statusOf(taskId), UploadFileStatus.uploading);
+      expect(progressOf(taskId), 50);
+      expect(emissions, greaterThan(emissionsAfterDownload));
+    });
+
+    test('Should ignore progress for a task that is no longer listed', () {
+      uploadController.deleteFileUploaded(taskId);
+
+      expect(
+        () => uploadController.updateDownloadProgress(
+          taskId: taskId,
+          received: 100,
+          total: 2000,
+        ),
+        returnsNormally,
+      );
+      expect(uploadController.listUploadAttachments, isEmpty);
+    });
+  });
+
   group('UploadController::cancel on close::', () {
     const pendingTaskId = UploadTaskId('pending-task');
     const doneTaskId = UploadTaskId('done-task');

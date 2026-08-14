@@ -244,19 +244,14 @@ class UploadController extends BaseController {
     required int received,
     required int total,
   }) {
-    _uploadingStateFiles.updateElementByUploadTaskId(
-      taskId,
-      (currentState) => currentState?.copyWith(
-        uploadingProgress: _mapProgress(
-          received,
-          total,
-          current: currentState.uploadingProgress,
-          from: 0,
-          to: _downloadProgressCeiling,
-        ),
-      ),
+    _applyTransferProgress(
+      taskId: taskId,
+      processed: received,
+      total: total,
+      from: 0,
+      to: _downloadProgressCeiling,
+      status: UploadFileStatus.fetching,
     );
-    _refreshListUploadAttachmentState();
   }
 
   /// Flips the chip to [UploadFileStatus.uploading] and resumes the bar from
@@ -266,17 +261,47 @@ class UploadController extends BaseController {
     required int sent,
     required int total,
   }) {
+    _applyTransferProgress(
+      taskId: taskId,
+      processed: sent,
+      total: total,
+      from: _downloadProgressCeiling,
+      to: 100,
+      status: UploadFileStatus.uploading,
+    );
+  }
+
+  /// Maps one leg's bytes onto its band of the bar. A chunk that moves neither
+  /// the percent nor the status is dropped, so a multi-MB transfer rebuilds the
+  /// chips at most once per percent instead of once per chunk.
+  void _applyTransferProgress({
+    required UploadTaskId taskId,
+    required int processed,
+    required int total,
+    required int from,
+    required int to,
+    required UploadFileStatus status,
+  }) {
+    final currentState = _uploadingStateFiles.getUploadFileStateById(taskId);
+    if (currentState == null) return;
+
+    final progress = _mapProgress(
+      processed,
+      total,
+      current: currentState.uploadingProgress,
+      from: from,
+      to: to,
+    );
+    if (progress == currentState.uploadingProgress &&
+        status == currentState.uploadStatus) {
+      return;
+    }
+
     _uploadingStateFiles.updateElementByUploadTaskId(
       taskId,
-      (currentState) => currentState?.copyWith(
-        uploadStatus: UploadFileStatus.uploading,
-        uploadingProgress: _mapProgress(
-          sent,
-          total,
-          current: currentState.uploadingProgress,
-          from: _downloadProgressCeiling,
-          to: 100,
-        ),
+      (state) => state?.copyWith(
+        uploadStatus: status,
+        uploadingProgress: progress,
       ),
     );
     _refreshListUploadAttachmentState();
@@ -329,9 +354,9 @@ class UploadController extends BaseController {
   void _refreshListUploadAttachmentState() {
     // A cancelled transfer still reports back after the composer closed.
     if (isClosed) return;
+    // A fresh list instance already notifies, so no `refresh()` on top of it.
     listUploadAttachments.value =
         _uploadingStateFiles.uploadingStateFiles.nonNulls.toList();
-    listUploadAttachments.refresh();
   }
 
   List<Attachment> get attachmentsUploaded {
