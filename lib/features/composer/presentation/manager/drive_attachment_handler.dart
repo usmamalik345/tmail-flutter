@@ -34,12 +34,7 @@ class DriveAttachmentHandler {
     AppLocalizations? appLocalizations,
   }) async {
     if (result.isEmpty) {
-      getBinding<ToastManager>()?.showMessageFailure(
-        DrivePickFailure(
-          Exception(),
-          message: appLocalizations?.driveNoValidAttachment,
-        ),
-      );
+      _showFailureToast(appLocalizations?.driveNoValidAttachment);
       return;
     }
     final linkDocs = result
@@ -64,10 +59,23 @@ class DriveAttachmentHandler {
 
     if (linkDocs.isNotEmpty || transfersStarted) return;
 
-    getBinding<ToastManager>()?.showMessageFailure(DrivePickFailure(
-      Exception(),
-      message: appLocalizations?.driveAttachmentInDevelopment,
-    ));
+    _showFailureToast(appLocalizations?.driveAttachmentInDevelopment);
+  }
+
+  /// Toasts [message], or logs when there is no [ToastManager] bound: a pick
+  /// that ends with nothing attached must not also end silently.
+  void _showFailureToast(String? message) {
+    final toastManager = getBinding<ToastManager>();
+    if (toastManager == null) {
+      logWarning(
+        'DriveAttachmentHandler::_showFailureToast: no ToastManager bound, '
+        'failure not shown to the user',
+      );
+      return;
+    }
+    toastManager.showMessageFailure(
+      DrivePickFailure(Exception(), message: message),
+    );
   }
 
   Future<void> insertDriveLinkHtml(
