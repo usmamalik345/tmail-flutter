@@ -55,6 +55,9 @@ class UploadController extends BaseController {
 
   @override
   void onClose() {
+    // Stop the work before dropping the states that hold its cancel tokens.
+    _uploadingStateFiles.cancelAllPending();
+    _uploadingStateInlineFiles.cancelAllPending();
     listUploadAttachments.clear();
     _uploadingStateFiles.clear();
     _uploadingStateInlineFiles.clear();
@@ -324,6 +327,8 @@ class UploadController extends BaseController {
   }
 
   void _refreshListUploadAttachmentState() {
+    // A cancelled transfer still reports back after the composer closed.
+    if (isClosed) return;
     listUploadAttachments.value =
         _uploadingStateFiles.uploadingStateFiles.nonNulls.toList();
     listUploadAttachments.refresh();

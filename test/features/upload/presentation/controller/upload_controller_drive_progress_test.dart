@@ -1,4 +1,5 @@
 import 'package:core/data/network/config/dynamic_url_interceptors.dart';
+import 'package:dio/dio.dart';
 import 'package:core/presentation/resources/image_paths.dart';
 import 'package:core/presentation/utils/app_toast.dart';
 import 'package:core/presentation/utils/responsive_utils.dart';
@@ -77,7 +78,7 @@ void main() {
     Get.put<ToastManager>(MockToastManager());
     Get.put<TwakeAppManager>(MockTwakeAppManager());
 
-    uploadController = UploadController(MockUploadAttachmentInteractor());
+    uploadController = Get.put(UploadController(MockUploadAttachmentInteractor()));
     uploadController.addDownloadingPlaceholder(
       taskId: taskId,
       fileName: 'Photo.jpg',
@@ -187,6 +188,64 @@ void main() {
 
       expect(uploadController.getUploadFileId(taskId), isNull);
       expect(uploadController.listUploadAttachments, isEmpty);
+    });
+  });
+
+  group('UploadController::cancel on close::', () {
+    const pendingTaskId = UploadTaskId('pending-task');
+    const doneTaskId = UploadTaskId('done-task');
+
+    late CancelToken pendingToken;
+    late CancelToken doneToken;
+
+    setUp(() {
+      pendingToken = CancelToken();
+      doneToken = CancelToken();
+
+      uploadController.addDownloadingPlaceholder(
+        taskId: pendingTaskId,
+        fileName: 'Pending.pdf',
+        fileSize: 4000,
+        cancelToken: pendingToken,
+      );
+      uploadController.addDownloadingPlaceholder(
+        taskId: doneTaskId,
+        fileName: 'Done.pdf',
+        fileSize: 4000,
+        cancelToken: doneToken,
+      );
+      uploadController.completeUploadedFile(
+        taskId: doneTaskId,
+        attachment: attachmentOf('blob-done'),
+      );
+    });
+
+    test('Should cancel every unfinished transfer when the composer closes', () async {
+      await Get.delete<UploadController>();
+
+      expect(pendingToken.isCancelled, isTrue);
+    });
+
+    test('Should leave a finished transfer alone when the composer closes', () async {
+      await Get.delete<UploadController>();
+
+      expect(doneToken.isCancelled, isFalse);
+    });
+
+    test('Should ignore a transfer reporting back after the composer closed', () async {
+      await Get.delete<UploadController>();
+
+      expect(
+        () {
+          uploadController.updateDownloadProgress(
+            taskId: pendingTaskId,
+            received: 100,
+            total: 4000,
+          );
+          uploadController.deleteFileUploaded(pendingTaskId);
+        },
+        returnsNormally,
+      );
     });
   });
 }

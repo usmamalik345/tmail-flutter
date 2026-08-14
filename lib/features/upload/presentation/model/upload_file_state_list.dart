@@ -57,6 +57,15 @@ class UploadFileStateList {
     _uploadingStateFiles.clear();
   }
 
+  /// Cancels every transfer that has not settled yet. Apart from [clear],
+  /// which a re-init calls and must not stop anything.
+  void cancelAllPending() {
+    for (final fileState in _uploadingStateFiles) {
+      if (fileState == null || fileState.uploadStatus.completed) continue;
+      fileState.cancelToken?.cancel();
+    }
+  }
+
   void deleteElementByUploadTaskId(UploadTaskId uploadTaskId) {
     final fileState = _uploadingStateFiles
         .firstWhereOrNull((fileState) => fileState?.uploadTaskId == uploadTaskId);
