@@ -94,7 +94,7 @@ class DriveDocumentTransferRunner {
   /// [StateError] when there is none to send.
   String _requireAuthHeader() {
     final authHeader = _resolveAuthHeader();
-    if (authHeader == null || authHeader.isEmpty) {
+    if (authHeader == null || authHeader.trim().isEmpty) {
       throw StateError('No authorization header for drive transfer');
     }
     return authHeader;
