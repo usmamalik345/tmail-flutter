@@ -316,34 +316,26 @@ void main() {
       verify(uploadController.failDriveTransfer(pending.taskId)).called(1);
     });
 
-    test('Should fail the transfer when the session lost its header', () async {
-      final runner = buildRunner();
-      final pending = enqueueOne(runner, docOf());
-      authHeader = null;
+    const unusableHeaders = <String, String?>{
+      'the session lost its header': null,
+      'the header went blank': '   ',
+    };
 
-      final attached = await runner.run(
-        pending: pending,
-        uploadUri: Uri.parse('https://jmap.example.com/upload'),
-        strategy: _ScriptedStrategy((_) async => attachment),
-      );
+    unusableHeaders.forEach((reason, header) {
+      test('Should fail the transfer when $reason', () async {
+        final runner = buildRunner();
+        final pending = enqueueOne(runner, docOf());
+        authHeader = header;
 
-      expect(attached, isFalse);
-      verify(uploadController.failDriveTransfer(pending.taskId)).called(1);
-    });
+        final attached = await runner.run(
+          pending: pending,
+          uploadUri: Uri.parse('https://jmap.example.com/upload'),
+          strategy: _ScriptedStrategy((_) async => attachment),
+        );
 
-    test('Should fail the transfer when the header went blank', () async {
-      final runner = buildRunner();
-      final pending = enqueueOne(runner, docOf());
-      authHeader = '   ';
-
-      final attached = await runner.run(
-        pending: pending,
-        uploadUri: Uri.parse('https://jmap.example.com/upload'),
-        strategy: _ScriptedStrategy((_) async => attachment),
-      );
-
-      expect(attached, isFalse);
-      verify(uploadController.failDriveTransfer(pending.taskId)).called(1);
+        expect(attached, isFalse);
+        verify(uploadController.failDriveTransfer(pending.taskId)).called(1);
+      });
     });
   });
 }
