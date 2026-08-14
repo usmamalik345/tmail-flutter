@@ -5632,6 +5632,16 @@ class AppLocalizations {
     );
   }
 
+  String driveFilesAttached(int count) {
+    return Intl.plural(
+      count,
+      one: '1 file attached from Drive',
+      other: '$count files attached from Drive',
+      name: 'driveFilesAttached',
+      args: [count],
+    );
+  }
+
   String get labelAs {
     return Intl.message(
       'Label as',

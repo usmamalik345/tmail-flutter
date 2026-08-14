@@ -14,6 +14,16 @@ final class DrivePickResult extends DrivePickState {
   List<Object> get props => [documents];
 }
 
+/// A pick whose downloadable documents finished transferring, carrying how
+/// many of them actually became attachments.
+final class DriveAttachSuccess extends DrivePickState implements Success {
+  final int attachedCount;
+  DriveAttachSuccess(this.attachedCount);
+
+  @override
+  List<Object?> get props => [attachedCount];
+}
+
 final class DrivePickFailure extends DrivePickState implements FeatureFailure {
   final Object error;
   final String? message;

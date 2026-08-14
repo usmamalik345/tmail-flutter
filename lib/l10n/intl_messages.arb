@@ -5302,6 +5302,16 @@
     "placeholders_order": [],
     "placeholders": {}
   },
+  "driveFilesAttached": "{count,plural, =1{1 file attached from Drive}other{{count} files attached from Drive}}",
+  "@driveFilesAttached": {
+    "type": "text",
+    "placeholders_order": [
+      "count"
+    ],
+    "placeholders": {
+      "count": {}
+    }
+  },
   "labelAs": "Label as",
   "@labelAs": {
     "type": "text",

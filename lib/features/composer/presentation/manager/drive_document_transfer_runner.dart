@@ -31,7 +31,10 @@ class DriveDocumentTransferRunner {
   /// so no file is downloaded only to be rejected by the upload endpoint.
   bool get canAuthenticate => resolveAuthHeader()?.trim().isNotEmpty == true;
 
-  Future<void> run({
+  /// Returns whether the document became an attachment: `false` covers both a
+  /// failed transfer and one the user cancelled, so a batch only reports what
+  /// actually landed.
+  Future<bool> run({
     required DriveDocument doc,
     required Uri uploadUri,
     required DriveTransferStrategy<StagedDriveFile> strategy,
@@ -81,6 +84,7 @@ class DriveDocumentTransferRunner {
         taskId: taskId,
         attachment: attachment,
       );
+      return true;
     } catch (error) {
       _handleTransferFailure(
         taskId: taskId,
@@ -88,6 +92,7 @@ class DriveDocumentTransferRunner {
         exceededDeclaredSize: exceededDeclaredSize,
         error: error,
       );
+      return false;
     }
   }
 

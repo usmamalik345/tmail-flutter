@@ -13,12 +13,15 @@ import 'package:tmail_ui_user/features/upload/data/network/file_uploader.dart';
 import 'package:tmail_ui_user/features/upload/domain/model/upload_task_id.dart';
 import 'package:tmail_ui_user/features/upload/domain/state/attachment_upload_state.dart';
 import 'package:tmail_ui_user/features/upload/presentation/validator/attachment_upload_validation_service.dart';
+import 'package:tmail_ui_user/main/routes/route_navigation.dart';
+import 'package:tmail_ui_user/main/utils/toast_manager.dart';
 import 'package:uuid/uuid.dart';
 import 'package:workplace/data/datasource/drive_transfer/drive_transfer_strategy.dart';
 import 'package:workplace/data/datasource/drive_transfer/drive_transfer_strategy_factory.dart';
 import 'package:workplace/data/datasource/drive_transfer/staged_drive_file.dart';
 import 'package:workplace/data/model/workplace_type_defs.dart';
 import 'package:workplace/domain/entity/drive_document.dart';
+import 'package:workplace/presentation/model/drive_pick_state.dart';
 
 /// Resolves the JMAP upload endpoint for the current session, or null when
 /// there is none yet.
@@ -102,20 +105,43 @@ class DriveTransferPipeline {
     return true;
   }
 
+  /// One toast per pick, not per file: the batch reports itself once every
+  /// transfer has settled. Counting needs no lock — the workers are concurrent
+  /// futures on a single isolate, not parallel threads.
   Future<void> _runBatch(
     List<DriveDocument> docs,
     Uri uploadUri,
     DriveTransferStrategy<StagedDriveFile> strategy,
-  ) {
-    return runWithConcurrency(
+  ) async {
+    var attachedCount = 0;
+    await runWithConcurrency(
       docs,
       strategy.maxConcurrentTransfers,
-      (doc) => transferRunner.run(
-        doc: doc,
-        uploadUri: uploadUri,
-        strategy: strategy,
-      ),
+      (doc) async {
+        final attached = await transferRunner.run(
+          doc: doc,
+          uploadUri: uploadUri,
+          strategy: strategy,
+        );
+        if (attached) attachedCount++;
+      },
     );
+    // Nothing landed means every file already toasted its own failure, or the
+    // user cancelled them: a "0 attached" toast would only add noise.
+    if (attachedCount > 0) _showSuccessToast(attachedCount);
+  }
+
+  /// Toasts the batch result, or logs when there is no [ToastManager] bound.
+  void _showSuccessToast(int attachedCount) {
+    final toastManager = getBinding<ToastManager>();
+    if (toastManager == null) {
+      logWarning(
+        'DriveTransferPipeline::_showSuccessToast: no ToastManager bound, '
+        'success not shown to the user',
+      );
+      return;
+    }
+    toastManager.showMessageSuccess(DriveAttachSuccess(attachedCount));
   }
 
   /// Uploads a staged file whose bytes live in memory or on disk through the
