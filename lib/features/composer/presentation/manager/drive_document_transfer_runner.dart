@@ -31,7 +31,7 @@ class DriveDocumentTransferRunner {
 
   /// Whether there is a session to upload with. Checked before a batch starts,
   /// so no file is downloaded only to be rejected by the upload endpoint.
-  bool get canAuthenticate => _resolveAuthHeader()?.isNotEmpty == true;
+  bool get canAuthenticate => _resolveAuthHeader()?.trim().isNotEmpty == true;
 
   Future<void> run({
     required DriveDocument doc,
