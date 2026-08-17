@@ -37,12 +37,14 @@ class DriveAttachmentHandler {
       _showFailureToast(appLocalizations?.driveNoValidAttachment);
       return;
     }
-    final linkDocs = result
-        .where((doc) => doc.isAttachableAsLink(requireHttps: requireHttps))
-        .toList();
-    final downloadableDocs = result
-        .where((doc) => doc.isAttachableAsDownload(requireHttps: requireHttps))
-        .toList();
+    final linkDocs = <DriveDocument>[];
+    final downloadableDocs = <DriveDocument>[];
+    for (final doc in result) {
+      if (doc.isAttachableAsLink(requireHttps: requireHttps)) linkDocs.add(doc);
+      if (doc.isAttachableAsDownload(requireHttps: requireHttps)) {
+        downloadableDocs.add(doc);
+      }
+    }
 
     // Both halves are dispatched: a mixed pick inserts its links and transfers
     // its downloadable docs.
