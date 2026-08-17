@@ -153,16 +153,16 @@ class DriveDocumentTransferRunner {
     required bool exceededDeclaredSize,
     required Object error,
   }) {
+    if (cancelToken.isCancelled && !exceededDeclaredSize) {
+      // A user cancel is not a failure, so no warning log and no toast.
+      uploadController.deleteFileUploaded(taskId);
+      return;
+    }
     logWarning(
       'DriveDocumentTransferRunner::run: transfer failed | '
       'taskId=${taskId.id} | error=${_errorCategory(error)}',
     );
-    if (cancelToken.isCancelled && !exceededDeclaredSize) {
-      // The user asked for this one to stop, so no error toast.
-      uploadController.deleteFileUploaded(taskId);
-    } else {
-      uploadController.failDriveTransfer(taskId);
-    }
+    uploadController.failDriveTransfer(taskId);
   }
 
   /// A stable, PII-free label for a transfer failure: no document name, no
