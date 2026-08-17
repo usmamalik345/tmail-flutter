@@ -48,7 +48,7 @@ class DriveDocumentTransferRunner {
 
   /// Whether there is a session to upload with. Checked before a batch starts,
   /// so no file is downloaded only to be rejected by the upload endpoint.
-  bool get canAuthenticate => resolveAuthHeader()?.trim().isNotEmpty == true;
+  bool get canAuthenticate => _resolveAuthHeader() != null;
 
   /// Puts a chip on screen for every [docs] entry at once, before any slot is
   /// free, and returns the handles to transfer them by.
@@ -142,15 +142,17 @@ class DriveDocumentTransferRunner {
     }
   }
 
+  /// The trimmed `Authorization` header, or null when there is none to send.
+  String? _resolveAuthHeader() {
+    final authHeader = resolveAuthHeader()?.trim();
+    return authHeader?.isNotEmpty == true ? authHeader : null;
+  }
+
   /// The `Authorization` header for the current session, or a thrown
   /// [StateError] when there is none to send.
-  String _requireAuthHeader() {
-    final authHeader = resolveAuthHeader();
-    if (authHeader == null || authHeader.trim().isEmpty) {
-      throw StateError('No authorization header for drive transfer');
-    }
-    return authHeader;
-  }
+  String _requireAuthHeader() =>
+      _resolveAuthHeader() ??
+      (throw StateError('No authorization header for drive transfer'));
 
   /// A failing file drops its own chip and nothing else: an expired link or
   /// a cancelled transfer must not take its siblings down with it.
