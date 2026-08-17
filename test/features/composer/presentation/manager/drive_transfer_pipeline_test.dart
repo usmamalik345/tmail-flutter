@@ -196,7 +196,7 @@ void main() {
       )).thenAnswer((_) async {
         if (!firstRunStarted.isCompleted) firstRunStarted.complete();
         await releaseFirstRun.future;
-        return true;
+        return DriveTransferResult.attached;
       });
 
       unawaited(buildPipeline().transfer(docs));
@@ -216,11 +216,13 @@ void main() {
         pending: anyNamed('pending'),
         uploadUri: anyNamed('uploadUri'),
         strategy: anyNamed('strategy'),
-      )).thenAnswer((invocation) async =>
-          (invocation.namedArguments[#pending] as PendingDriveTransfer)
-              .doc
-              .id !=
-          'c');
+      )).thenAnswer((invocation) async {
+        final doc =
+            (invocation.namedArguments[#pending] as PendingDriveTransfer).doc;
+        return doc.id != 'c'
+            ? DriveTransferResult.attached
+            : DriveTransferResult.failed;
+      });
 
       expect(await buildPipeline().transfer(docs), isTrue);
       await settle();
@@ -236,7 +238,7 @@ void main() {
         pending: anyNamed('pending'),
         uploadUri: anyNamed('uploadUri'),
         strategy: anyNamed('strategy'),
-      )).thenAnswer((_) async => false);
+      )).thenAnswer((_) async => DriveTransferResult.failed);
 
       expect(await buildPipeline().transfer([docOf('a')]), isTrue);
       await settle();
@@ -249,7 +251,7 @@ void main() {
         pending: anyNamed('pending'),
         uploadUri: anyNamed('uploadUri'),
         strategy: anyNamed('strategy'),
-      )).thenAnswer((_) async => true);
+      )).thenAnswer((_) async => DriveTransferResult.attached);
 
       await buildPipeline().transfer([docOf('a'), docOf('b')]);
       await settle();

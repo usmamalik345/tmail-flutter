@@ -121,12 +121,12 @@ class DriveTransferPipeline {
       pendingTransfers,
       strategy.maxConcurrentTransfers,
       (pending) async {
-        final attached = await transferRunner.run(
+        final result = await transferRunner.run(
           pending: pending,
           uploadUri: uploadUri,
           strategy: strategy,
         );
-        if (attached) attachedCount++;
+        if (result == DriveTransferResult.attached) attachedCount++;
       },
     );
     // Nothing landed means every file already toasted its own failure, or the

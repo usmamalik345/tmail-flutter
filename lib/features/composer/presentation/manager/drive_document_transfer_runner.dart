@@ -12,6 +12,9 @@ import 'package:workplace/domain/entity/drive_document.dart';
 /// there is none to send.
 typedef ResolveAuthHeader = String? Function();
 
+/// How one document's transfer ended.
+enum DriveTransferResult { attached, failed, cancelled }
+
 /// A document whose chip is already on screen while it waits for a concurrency
 /// slot. Its identity is minted at enqueue time, so it can be cancelled before
 /// its transfer ever starts.
@@ -71,10 +74,9 @@ class DriveDocumentTransferRunner {
     return pendingTransfers;
   }
 
-  /// Returns whether the document became an attachment: `false` covers both a
-  /// failed transfer and one the user cancelled, so a batch only reports what
-  /// actually landed.
-  Future<bool> run({
+  /// Returns how the document's transfer ended, so a batch can tell an actual
+  /// failure apart from a user cancel.
+  Future<DriveTransferResult> run({
     required PendingDriveTransfer pending,
     required Uri uploadUri,
     required DriveTransferStrategy<StagedDriveFile> strategy,
@@ -87,7 +89,7 @@ class DriveDocumentTransferRunner {
     // Cancelled while queued, so there is nothing left to download.
     if (cancelToken.isCancelled) {
       uploadController.deleteFileUploaded(taskId);
-      return false;
+      return DriveTransferResult.cancelled;
     }
 
     try {
@@ -123,15 +125,14 @@ class DriveDocumentTransferRunner {
         taskId: taskId,
         attachment: attachment,
       );
-      return true;
+      return DriveTransferResult.attached;
     } catch (error) {
-      _handleTransferFailure(
+      return _handleTransferFailure(
         taskId: taskId,
         cancelToken: cancelToken,
         exceededDeclaredSize: exceededDeclaredSize,
         error: error,
       );
-      return false;
     }
   }
 
@@ -147,7 +148,7 @@ class DriveDocumentTransferRunner {
 
   /// A failing file drops its own chip and nothing else: an expired link or
   /// a cancelled transfer must not take its siblings down with it.
-  void _handleTransferFailure({
+  DriveTransferResult _handleTransferFailure({
     required UploadTaskId taskId,
     required CancelToken cancelToken,
     required bool exceededDeclaredSize,
@@ -156,13 +157,14 @@ class DriveDocumentTransferRunner {
     if (cancelToken.isCancelled && !exceededDeclaredSize) {
       // A user cancel is not a failure, so no warning log and no toast.
       uploadController.deleteFileUploaded(taskId);
-      return;
+      return DriveTransferResult.cancelled;
     }
     logWarning(
       'DriveDocumentTransferRunner::run: transfer failed | '
       'taskId=${taskId.id} | error=${_errorCategory(error)}',
     );
     uploadController.failDriveTransfer(taskId);
+    return DriveTransferResult.failed;
   }
 
   /// A stable, PII-free label for a transfer failure: no document name, no

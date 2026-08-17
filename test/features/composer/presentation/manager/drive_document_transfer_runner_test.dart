@@ -155,13 +155,13 @@ void main() {
       final pending = enqueueOne(runner, docOf());
       final strategy = _ScriptedStrategy((_) async => attachment);
 
-      final attached = await runner.run(
+      final result = await runner.run(
         pending: pending,
         uploadUri: Uri.parse('https://jmap.example.com/upload'),
         strategy: strategy,
       );
 
-      expect(attached, isTrue);
+      expect(result, DriveTransferResult.attached);
       verify(uploadController.completeUploadedFile(
         taskId: pending.taskId,
         attachment: attachment,
@@ -201,14 +201,15 @@ void main() {
       final strategy = _ScriptedStrategy((_) async => attachment);
       pending.cancelToken.cancel();
 
-      final attached = await runner.run(
+      final result = await runner.run(
         pending: pending,
         uploadUri: Uri.parse('https://jmap.example.com/upload'),
         strategy: strategy,
       );
 
-      expect(attached, isFalse);
+      expect(result, DriveTransferResult.cancelled);
       expect(strategy.transferCalls, 0);
+      verify(uploadController.deleteFileUploaded(pending.taskId)).called(1);
     });
   });
 
@@ -224,13 +225,13 @@ void main() {
         );
       });
 
-      final attached = await runner.run(
+      final result = await runner.run(
         pending: pending,
         uploadUri: Uri.parse('https://jmap.example.com/upload'),
         strategy: strategy,
       );
 
-      expect(attached, isFalse);
+      expect(result, DriveTransferResult.failed);
       expect(pending.cancelToken.isCancelled, isTrue);
       // Not the silent delete: an oversized link is an error the user must see.
       verify(uploadController.failDriveTransfer(pending.taskId)).called(1);
@@ -249,13 +250,13 @@ void main() {
         return attachment;
       });
 
-      final attached = await runner.run(
+      final result = await runner.run(
         pending: pending,
         uploadUri: Uri.parse('https://jmap.example.com/upload'),
         strategy: strategy,
       );
 
-      expect(attached, isTrue);
+      expect(result, DriveTransferResult.attached);
       expect(pending.cancelToken.isCancelled, isFalse);
       verify(uploadController.updateDownloadProgress(
         taskId: pending.taskId,
@@ -266,7 +267,7 @@ void main() {
   });
 
   group('DriveDocumentTransferRunner::run::failure paths::', () {
-    Future<bool> runFailing(
+    Future<DriveTransferResult> runFailing(
       DriveDocumentTransferRunner runner,
       PendingDriveTransfer pending,
       Object error,
@@ -288,13 +289,13 @@ void main() {
         );
       });
 
-      final attached = await runner.run(
+      final result = await runner.run(
         pending: pending,
         uploadUri: Uri.parse('https://jmap.example.com/upload'),
         strategy: strategy,
       );
 
-      expect(attached, isFalse);
+      expect(result, DriveTransferResult.cancelled);
       verify(uploadController.deleteFileUploaded(pending.taskId)).called(1);
       verifyNever(uploadController.failDriveTransfer(any));
     });
@@ -303,7 +304,7 @@ void main() {
       final runner = buildRunner();
       final pending = enqueueOne(runner, docOf());
 
-      final attached = await runFailing(
+      final result = await runFailing(
         runner,
         pending,
         DioException.connectionError(
@@ -312,7 +313,7 @@ void main() {
         ),
       );
 
-      expect(attached, isFalse);
+      expect(result, DriveTransferResult.failed);
       verify(uploadController.failDriveTransfer(pending.taskId)).called(1);
     });
 
@@ -327,13 +328,13 @@ void main() {
         final pending = enqueueOne(runner, docOf());
         authHeader = header;
 
-        final attached = await runner.run(
+        final result = await runner.run(
           pending: pending,
           uploadUri: Uri.parse('https://jmap.example.com/upload'),
           strategy: _ScriptedStrategy((_) async => attachment),
         );
 
-        expect(attached, isFalse);
+        expect(result, DriveTransferResult.failed);
         verify(uploadController.failDriveTransfer(pending.taskId)).called(1);
       });
     });
