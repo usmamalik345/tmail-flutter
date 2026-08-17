@@ -113,33 +113,40 @@ class DriveTransferPipeline {
     Uri uploadUri,
     DriveTransferStrategy<StagedDriveFile> strategy,
   ) async {
-    var attachedCount = 0;
-    var failedCount = 0;
-    // Every chip goes up first: what the user sees must match what they picked,
-    // not how many files fit through the concurrency limit at once.
-    final pendingTransfers = transferRunner.enqueue(docs);
-    await runWithConcurrency(
-      pendingTransfers,
-      strategy.maxConcurrentTransfers,
-      (pending) async {
-        final result = await transferRunner.run(
-          pending: pending,
-          uploadUri: uploadUri,
-          strategy: strategy,
-        );
-        switch (result) {
-          case DriveTransferResult.attached:
-            attachedCount++;
-          case DriveTransferResult.failed:
-            failedCount++;
-          case DriveTransferResult.cancelled:
-            break;
-        }
-      },
-    );
-    if (attachedCount > 0) _showSuccessToast(attachedCount);
-    // One toast for the whole batch, not one per file.
-    if (failedCount > 0) transferRunner.uploadController.showDriveTransferFailureToast();
+    // Guards the whole batch: runWithConcurrency propagates a worker's escaped
+    // error, and that must not become an unhandled root-zone error under the
+    // caller's unawaited().
+    try {
+      var attachedCount = 0;
+      var failedCount = 0;
+      // Every chip goes up first: what the user sees must match what they
+      // picked, not how many files fit through the concurrency limit at once.
+      final pendingTransfers = transferRunner.enqueue(docs);
+      await runWithConcurrency(
+        pendingTransfers,
+        strategy.maxConcurrentTransfers,
+        (pending) async {
+          final result = await transferRunner.run(
+            pending: pending,
+            uploadUri: uploadUri,
+            strategy: strategy,
+          );
+          switch (result) {
+            case DriveTransferResult.attached:
+              attachedCount++;
+            case DriveTransferResult.failed:
+              failedCount++;
+            case DriveTransferResult.cancelled:
+              break;
+          }
+        },
+      );
+      if (attachedCount > 0) _showSuccessToast(attachedCount);
+      // One toast for the whole batch, not one per file.
+      if (failedCount > 0) transferRunner.uploadController.showDriveTransferFailureToast();
+    } catch (error) {
+      logWarning('DriveTransferPipeline::_runBatch: batch failed: $error');
+    }
   }
 
   /// Toasts the batch result, or logs when there is no [ToastManager] bound.

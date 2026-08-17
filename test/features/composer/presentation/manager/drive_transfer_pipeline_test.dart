@@ -277,6 +277,18 @@ void main() {
       verifyNever(uploadController.showDriveTransferFailureToast());
     });
 
+    test('Should not let an escaped worker error become unhandled', () async {
+      when(transferRunner.run(
+        pending: anyNamed('pending'),
+        uploadUri: anyNamed('uploadUri'),
+        strategy: anyNamed('strategy'),
+      )).thenAnswer((_) => throw StateError('boom'));
+
+      // No uncaught error means the batch's try/catch swallowed it.
+      await buildPipeline().transfer([docOf('a')]);
+      await settle();
+    });
+
     test('Should run each enqueued transfer against the selected strategy', () async {
       when(transferRunner.run(
         pending: anyNamed('pending'),
