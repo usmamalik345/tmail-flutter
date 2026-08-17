@@ -177,7 +177,11 @@ class DriveDocumentTransferRunner {
 
   /// A stable, PII-free label for a transfer failure: no document name, no
   /// download URI, no error message.
-  String _errorCategory(Object error) => error is DioException
-      ? 'DioException.${error.type.name}(${error.response?.statusCode})'
-      : error.runtimeType.toString();
+  String _errorCategory(Object error) {
+    if (error is! DioException) return error.runtimeType.toString();
+
+    final category = 'DioException.${error.type.name}';
+    final statusCode = error.response?.statusCode;
+    return statusCode == null ? category : '$category($statusCode)';
+  }
 }
