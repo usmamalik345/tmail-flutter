@@ -27,6 +27,11 @@ class DriveTransferStrategyFactory {
   bool? _opfsSupported;
   bool _swept = false;
 
+  /// The single source of truth for whether this platform can stage
+  /// downloadable drive documents — callers must not re-derive it (e.g. via
+  /// `kIsWeb`) independently.
+  bool get canStage => true;
+
   /// [uploader] backs the buffered fallback only; the OPFS strategy uploads
   /// through its own raw-XHR path.
   ///

@@ -8,6 +8,11 @@ import 'package:workplace/data/model/workplace_type_defs.dart';
 class DriveTransferStrategyFactory {
   const DriveTransferStrategyFactory();
 
+  /// The single source of truth for whether this platform can stage
+  /// downloadable drive documents — callers must not re-derive it (e.g. via
+  /// `kIsWeb`) independently.
+  bool get canStage => false;
+
   DriveTransferStrategy<StagedDriveFile>? create(
           {required StagedFileUploader uploader}) =>
       null;

@@ -28,6 +28,12 @@ mixin DrivePickerStateMixin<T extends StatefulWidget> on State<T> {
 
   OnPickDriveCallback? get pickerOnCallback => null;
 
+  /// Whether this platform can stage a picked download as a real attachment.
+  /// Defaults to the web-only capability; a caller wired to
+  /// `DriveTransferStrategyFactory.canStage` should override this instead of
+  /// deciding it again independently.
+  bool get canStageDownload => kIsWeb;
+
   bool _modalOpen = false;
 
   Future<void> onPickerTap() async {
@@ -46,10 +52,9 @@ mixin DrivePickerStateMixin<T extends StatefulWidget> on State<T> {
       final theme = _resolveWorkplaceTheme(context);
       final filePickerConfig = WorkplaceFilePickerConfigRequest(
         sharingLink: WorkplaceActionConfigRequest(label: l10n.addAsLink),
-        // Web only: it is the one platform with a staging strategy, so
-        // offering the action elsewhere would only ever reach the
-        // "not available yet" message.
-        downloadLink: kIsWeb
+        // Offering the action where staging isn't supported would only ever
+        // reach the "not available yet" message.
+        downloadLink: canStageDownload
             ? WorkplaceActionConfigRequest(label: l10n.addAsAttachment)
             : null,
         theme: WorkplaceThemeConfigRequest.fromEntity(theme),
