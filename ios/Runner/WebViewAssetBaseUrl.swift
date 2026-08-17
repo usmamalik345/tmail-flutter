@@ -3,7 +3,7 @@ import Flutter
 /// Exposes the on-disk `flutter_assets/` URL for Dart to pass as `loadData`'s `baseUrl`.
 class WebViewAssetBaseUrl {
 
-    private static let channelName = "com.linagora.android.tmail/webview_asset_base_url"
+    private static let channelName = "com.linagora.tmail/webview_asset_base_url"
     private static let flutterAssetsBaseUrlMethod = "flutterAssetsBaseUrl"
 
     func register(_ binaryMessenger: FlutterBinaryMessenger) {

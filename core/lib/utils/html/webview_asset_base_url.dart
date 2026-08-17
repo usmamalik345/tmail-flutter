@@ -14,7 +14,7 @@ class WebViewAssetBaseUrl {
 
   @visibleForTesting
   static const String channelName =
-      'com.linagora.android.tmail/webview_asset_base_url';
+      'com.linagora.tmail/webview_asset_base_url';
   @visibleForTesting
   static const String flutterAssetsBaseUrlMethod = 'flutterAssetsBaseUrl';
 

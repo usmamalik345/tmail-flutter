@@ -25,7 +25,7 @@ class WebViewAssetBaseUrl {
     }
 
     private companion object {
-        const val CHANNEL = "com.linagora.android.tmail/webview_asset_base_url"
+        const val CHANNEL = "com.linagora.tmail/webview_asset_base_url"
         const val FLUTTER_ASSETS_BASE_URL_METHOD = "flutterAssetsBaseUrl"
         const val ANDROID_ASSET_URL_PREFIX = "file:///android_asset/"
     }
