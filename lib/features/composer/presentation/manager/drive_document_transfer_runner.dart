@@ -53,24 +53,30 @@ class DriveDocumentTransferRunner {
   /// Puts a chip on screen for every [docs] entry at once, before any slot is
   /// free, and returns the handles to transfer them by.
   List<PendingDriveTransfer> enqueue(List<DriveDocument> docs) {
-    final pendingTransfers = docs
-        .map((doc) => PendingDriveTransfer(
-              doc: doc,
-              taskId: UploadTaskId(uuid.v4()),
-              cancelToken: CancelToken(),
-            ))
-        .toList();
+    if (docs.isEmpty) return const [];
 
-    uploadController.addDownloadingPlaceholders(pendingTransfers
-        .map((pending) => DriveTransferPlaceholder(
-              taskId: pending.taskId,
-              fileName: pending.doc.name,
-              fileSize: pending.doc.size,
-              mimeType: pending.doc.mimeType,
-              cancelToken: pending.cancelToken,
-            ))
-        .toList());
+    final pendingTransfers = <PendingDriveTransfer>[];
+    final placeholders = <DriveTransferPlaceholder>[];
 
+    for (final doc in docs) {
+      final taskId = UploadTaskId(uuid.v4());
+      final cancelToken = CancelToken();
+
+      pendingTransfers.add(PendingDriveTransfer(
+        doc: doc,
+        taskId: taskId,
+        cancelToken: cancelToken,
+      ));
+      placeholders.add(DriveTransferPlaceholder(
+        taskId: taskId,
+        fileName: doc.name,
+        fileSize: doc.size,
+        mimeType: doc.mimeType,
+        cancelToken: cancelToken,
+      ));
+    }
+
+    uploadController.addDownloadingPlaceholders(placeholders);
     return pendingTransfers;
   }
 
