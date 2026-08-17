@@ -307,10 +307,14 @@ class UploadController extends BaseController {
     _refreshListUploadAttachmentState();
   }
 
-  /// Drops a failed drive transfer's chip and tells the user, mirroring what
-  /// the Dio upload stream does for a failed upload.
+  /// Drops a failed drive transfer's chip. The batch toasts once for every
+  /// failure it collected, not per file — see [showDriveTransferFailureToast].
   void failDriveTransfer(UploadTaskId taskId) {
     deleteFileUploaded(taskId);
+  }
+
+  /// One toast for a whole batch of failed drive transfers.
+  void showDriveTransferFailureToast() {
     _showToastMessageWhenUploadAttachmentsFailure();
   }
 

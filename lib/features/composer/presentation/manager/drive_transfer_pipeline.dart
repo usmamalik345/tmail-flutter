@@ -114,6 +114,7 @@ class DriveTransferPipeline {
     DriveTransferStrategy<StagedDriveFile> strategy,
   ) async {
     var attachedCount = 0;
+    var failedCount = 0;
     // Every chip goes up first: what the user sees must match what they picked,
     // not how many files fit through the concurrency limit at once.
     final pendingTransfers = transferRunner.enqueue(docs);
@@ -126,12 +127,19 @@ class DriveTransferPipeline {
           uploadUri: uploadUri,
           strategy: strategy,
         );
-        if (result == DriveTransferResult.attached) attachedCount++;
+        switch (result) {
+          case DriveTransferResult.attached:
+            attachedCount++;
+          case DriveTransferResult.failed:
+            failedCount++;
+          case DriveTransferResult.cancelled:
+            break;
+        }
       },
     );
-    // Nothing landed means every file already toasted its own failure, or the
-    // user cancelled them: a "0 attached" toast would only add noise.
     if (attachedCount > 0) _showSuccessToast(attachedCount);
+    // One toast for the whole batch, not one per file.
+    if (failedCount > 0) transferRunner.uploadController.showDriveTransferFailureToast();
   }
 
   /// Toasts the batch result, or logs when there is no [ToastManager] bound.

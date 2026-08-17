@@ -11,6 +11,7 @@ import 'package:tmail_ui_user/features/composer/presentation/manager/drive_docum
 import 'package:tmail_ui_user/features/composer/presentation/manager/drive_transfer_pipeline.dart';
 import 'package:tmail_ui_user/features/upload/data/network/file_uploader.dart';
 import 'package:tmail_ui_user/features/upload/domain/model/upload_task_id.dart';
+import 'package:tmail_ui_user/features/upload/presentation/controller/upload_controller.dart';
 import 'package:tmail_ui_user/features/upload/presentation/validator/attachment_upload_validation_service.dart';
 import 'package:tmail_ui_user/main/utils/toast_manager.dart';
 import 'package:uuid/uuid.dart';
@@ -49,12 +50,14 @@ class _FakeStrategy extends DriveTransferStrategy<StagedDriveFile> {
   MockSpec<DriveDocumentTransferRunner>(),
   MockSpec<Uuid>(),
   MockSpec<ToastManager>(),
+  MockSpec<UploadController>(),
 ])
 void main() {
   late MockAttachmentUploadValidationService validationService;
   late MockDriveTransferStrategyFactory strategyFactory;
   late MockDriveDocumentTransferRunner transferRunner;
   late MockToastManager toastManager;
+  late MockUploadController uploadController;
   late _FakeStrategy strategy;
   late Uri? uploadUri;
 
@@ -98,6 +101,7 @@ void main() {
     strategyFactory = MockDriveTransferStrategyFactory();
     transferRunner = MockDriveDocumentTransferRunner();
     toastManager = MockToastManager();
+    uploadController = MockUploadController();
     strategy = _FakeStrategy();
     uploadUri = Uri.parse('https://jmap.example.com/upload');
 
@@ -105,6 +109,7 @@ void main() {
     Get.put<ToastManager>(toastManager);
 
     when(transferRunner.canAuthenticate).thenReturn(true);
+    when(transferRunner.uploadController).thenReturn(uploadController);
     when(strategyFactory.create(uploader: anyNamed('uploader')))
         .thenReturn(strategy);
     when(transferRunner.enqueue(any)).thenAnswer((invocation) =>
@@ -244,6 +249,32 @@ void main() {
       await settle();
 
       verifyNever(toastManager.showMessageSuccess(any));
+    });
+
+    test('Should toast the batch once for every failure, not per file', () async {
+      when(transferRunner.run(
+        pending: anyNamed('pending'),
+        uploadUri: anyNamed('uploadUri'),
+        strategy: anyNamed('strategy'),
+      )).thenAnswer((_) async => DriveTransferResult.failed);
+
+      await buildPipeline().transfer([docOf('a'), docOf('b'), docOf('c')]);
+      await settle();
+
+      verify(uploadController.showDriveTransferFailureToast()).called(1);
+    });
+
+    test('Should not toast a failure when every transfer was cancelled', () async {
+      when(transferRunner.run(
+        pending: anyNamed('pending'),
+        uploadUri: anyNamed('uploadUri'),
+        strategy: anyNamed('strategy'),
+      )).thenAnswer((_) async => DriveTransferResult.cancelled);
+
+      await buildPipeline().transfer([docOf('a')]);
+      await settle();
+
+      verifyNever(uploadController.showDriveTransferFailureToast());
     });
 
     test('Should run each enqueued transfer against the selected strategy', () async {
