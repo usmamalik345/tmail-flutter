@@ -85,7 +85,10 @@ class DriveDocumentTransferRunner {
     bool exceededDeclaredSize = false;
 
     // Cancelled while queued, so there is nothing left to download.
-    if (cancelToken.isCancelled) return false;
+    if (cancelToken.isCancelled) {
+      uploadController.deleteFileUploaded(taskId);
+      return false;
+    }
 
     try {
       final attachment = await strategy.transfer(DriveTransferRequest(
