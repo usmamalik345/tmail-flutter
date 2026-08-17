@@ -10,18 +10,34 @@ import 'dart:async';
 /// A worker is only spawned once there is an item for it to own, so an
 /// oversized [maxConcurrent] costs nothing: the worker count never exceeds the
 /// item count.
+///
+/// [items] is expected to never throw while spawning (pass a materialised
+/// list, not a lazy source with side effects); if it does, the workers
+/// already started are still drained — not orphaned — before the spawn error
+/// is rethrown.
 Future<void> runWithConcurrency<T>(
   Iterable<T> items,
   int maxConcurrent,
   Future<void> Function(T item) task,
-) {
+) async {
   final iterator = items.iterator;
   final maxWorkers = maxConcurrent < 1 ? 1 : maxConcurrent;
   final workers = <Future<void>>[];
-  while (workers.length < maxWorkers && iterator.moveNext()) {
-    workers.add(_drainQueue(iterator.current, iterator, task));
+  try {
+    while (workers.length < maxWorkers && iterator.moveNext()) {
+      workers.add(_drainQueue(iterator.current, iterator, task));
+    }
+  } catch (spawnError) {
+    // Only one error can surface; a worker's own failure is swallowed here,
+    // not left to escape as an unhandled zone error.
+    try {
+      await Future.wait(workers);
+    } catch (_) {
+      // Swallowed: the spawn error below is what the caller sees.
+    }
+    rethrow;
   }
-  return Future.wait(workers);
+  await Future.wait(workers);
 }
 
 /// One worker: runs [first], then pulls from the shared [iterator] until it is
