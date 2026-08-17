@@ -3,6 +3,7 @@ import 'package:core/presentation/extensions/color_extension.dart';
 import 'package:core/utils/html/html_template.dart';
 import 'package:core/presentation/views/button/tmail_button_widget.dart';
 import 'package:core/utils/html/html_utils.dart';
+import 'package:core/utils/html/webview_asset_base_url.dart';
 import 'package:core/utils/platform_info.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -233,6 +234,7 @@ class IdentitySignatureInputFieldWidget extends StatelessWidget {
         context,
         editorApi,
       ),
+      baseUrlResolver: WebViewAssetBaseUrl.instance.flutterAssetsBaseUrl,
     );
   }
 }

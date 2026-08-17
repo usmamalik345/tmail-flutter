@@ -7,6 +7,7 @@ import 'package:core/presentation/utils/theme_utils.dart';
 import 'package:core/presentation/views/responsive/responsive_widget.dart';
 import 'package:core/utils/html/html_template.dart';
 import 'package:core/utils/html/html_utils.dart';
+import 'package:core/utils/html/webview_asset_base_url.dart';
 import 'package:core/utils/platform_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_portal/flutter_portal.dart';
@@ -539,7 +540,8 @@ class VacationView extends GetWidget<VacationController> {
           addDefaultSelectionMenuItems: false,
           initialContent: controller.vacationMessageHtmlText ?? '',
           customStyleCss: HtmlTemplate.mobileCustomInternalStyleCSS(direction: AppUtils.getCurrentDirection(context)),
-          onCreated: (editorApi) => controller.initRichTextForMobile(context, editorApi)
+          onCreated: (editorApi) => controller.initRichTextForMobile(context, editorApi),
+          baseUrlResolver: WebViewAssetBaseUrl.instance.flutterAssetsBaseUrl,
       );
     }
   }

@@ -2,6 +2,7 @@ import 'package:core/presentation/constants/constants_ui.dart';
 import 'package:core/utils/app_logger.dart';
 import 'package:core/utils/build_utils.dart';
 import 'package:core/utils/html/html_template.dart';
+import 'package:core/utils/html/webview_asset_base_url.dart';
 import 'package:core/utils/platform_info.dart';
 import 'package:core/utils/html/html_utils.dart';
 import 'package:flutter/material.dart';
@@ -171,6 +172,7 @@ class _MobileEditorState extends State<MobileEditorWidget> with TextSelectionMix
       onCreated: _onWebViewCreated,
       onCompleted: _onWebViewCompleted,
       onContentHeightChanged: PlatformInfo.isIOS ? widget.onEditorContentHeightChanged : null,
+      baseUrlResolver: WebViewAssetBaseUrl.instance.flutterAssetsBaseUrl,
     );
   }
 }

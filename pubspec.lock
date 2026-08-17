@@ -502,11 +502,11 @@ packages:
     dependency: transitive
     description:
       path: "."
-      ref: master
-      resolved-ref: e1302796a79e8689e09de65544f343db2b798dff
+      ref: TF-4750-update-pass-base-url-to-WebView-load-data
+      resolved-ref: f7013519831be946d0e750dd101eb272013a2ec4
       url: "https://github.com/linagora/enough_html_editor.git"
     source: git
-    version: "0.1.6"
+    version: "0.1.7"
   enough_platform_widgets:
     dependency: transitive
     description:
@@ -2026,8 +2026,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: main
-      resolved-ref: fad6dc0102d07589c1cc6af97f1d8092749d1185
+      ref: TF-4750-update-enough_html_editor-dependency-reference
+      resolved-ref: b48a84bc6138ddbbf3886c8603a4dbf6f639cc69
       url: "https://github.com/linagora/rich-text-composer.git"
     source: git
     version: "0.1.1"
