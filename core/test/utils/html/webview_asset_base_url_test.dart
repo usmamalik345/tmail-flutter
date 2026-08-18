@@ -60,6 +60,24 @@ void main() {
       expect(callCount, 1);
     });
 
+    test('concurrent calls only hit the native channel once', () async {
+      var callCount = 0;
+      binaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        callCount++;
+        return 'file:///var/app/flutter_assets/';
+      });
+      final webViewAssetBaseUrl = WebViewAssetBaseUrl();
+
+      final results = await Future.wait([
+        webViewAssetBaseUrl.flutterAssetsBaseUrl(),
+        webViewAssetBaseUrl.flutterAssetsBaseUrl(),
+      ]);
+
+      expect(callCount, 1);
+      expect(results[0].toString(), 'file:///var/app/flutter_assets/');
+      expect(results[1].toString(), 'file:///var/app/flutter_assets/');
+    });
+
     test('returns null and does not retry when the native channel throws', () async {
       var callCount = 0;
       binaryMessenger.setMockMethodCallHandler(channel, (call) async {

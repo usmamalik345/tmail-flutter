@@ -20,26 +20,21 @@ class WebViewAssetBaseUrl {
 
   final MethodChannel _channel;
 
-  WebUri? _cachedFlutterAssetsBaseUrl;
-  bool _fetchFailed = false;
+  Future<WebUri?>? _resolution;
 
-  Future<WebUri?> flutterAssetsBaseUrl() async {
-    if (!PlatformInfo.isMobile) return null;
-    if (_cachedFlutterAssetsBaseUrl != null) return _cachedFlutterAssetsBaseUrl;
-    if (_fetchFailed) return null;
+  Future<WebUri?> flutterAssetsBaseUrl() {
+    if (!PlatformInfo.isMobile) return Future.value(null);
+    return _resolution ??= _resolve();
+  }
 
+  Future<WebUri?> _resolve() async {
     try {
       final baseUrl = await _channel.invokeMethod<String>(
         flutterAssetsBaseUrlMethod,
       );
-      if (baseUrl == null) {
-        _fetchFailed = true;
-        return null;
-      }
-      return _cachedFlutterAssetsBaseUrl = WebUri(baseUrl);
+      return baseUrl != null ? WebUri(baseUrl) : null;
     } catch (exception) {
       logWarning('$runtimeType::flutterAssetsBaseUrl:Exception = $exception');
-      _fetchFailed = true;
       return null;
     }
   }

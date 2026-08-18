@@ -218,6 +218,8 @@ class HtmlContentViewState extends State<HtmlContentViewer> with AutomaticKeepAl
     _webViewController = controller;
 
     _assetsBaseUrl = await WebViewAssetBaseUrl.instance.flutterAssetsBaseUrl();
+    if (!mounted) return;
+
     // No allowingReadAccessTo: on iOS it triggers a competing loadFileURL
     // navigation that starves the real page load. baseUrl alone is enough.
     await controller.loadData(
@@ -376,12 +378,8 @@ class HtmlContentViewState extends State<HtmlContentViewer> with AutomaticKeepAl
       return NavigationActionPolicy.CANCEL;
     }
 
-    if (navigationAction.isForMainFrame && url == 'about:blank') {
-      return NavigationActionPolicy.ALLOW;
-    }
-
-    // Not a user-followed link — let the baseUrl's own navigation through.
-    if (_assetsBaseUrl != null && url == _assetsBaseUrl.toString()) {
+    if (navigationAction.isForMainFrame &&
+        (url == 'about:blank' || url == _assetsBaseUrl?.toString())) {
       return NavigationActionPolicy.ALLOW;
     }
 
