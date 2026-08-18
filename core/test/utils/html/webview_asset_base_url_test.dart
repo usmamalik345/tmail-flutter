@@ -17,6 +17,17 @@ void main() {
     });
   }
 
+  List<int> mockCountingHandler({dynamic result, Object? error}) {
+    final callCount = [0];
+    binaryMessenger.setMockMethodCallHandler(channel, (call) async {
+      expect(call.method, WebViewAssetBaseUrl.flutterAssetsBaseUrlMethod);
+      callCount[0]++;
+      if (error != null) throw error;
+      return result;
+    });
+    return callCount;
+  }
+
   setUp(() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
   });
@@ -59,27 +70,17 @@ void main() {
     });
 
     test('caches the resolved url and only calls the native channel once', () async {
-      var callCount = 0;
-      binaryMessenger.setMockMethodCallHandler(channel, (call) async {
-        expect(call.method, WebViewAssetBaseUrl.flutterAssetsBaseUrlMethod);
-        callCount++;
-        return 'file:///var/app/flutter_assets/';
-      });
+      final callCount = mockCountingHandler(result: 'file:///var/app/flutter_assets/');
       final webViewAssetBaseUrl = WebViewAssetBaseUrl();
 
       await webViewAssetBaseUrl.flutterAssetsBaseUrl();
       await webViewAssetBaseUrl.flutterAssetsBaseUrl();
 
-      expect(callCount, 1);
+      expect(callCount[0], 1);
     });
 
     test('concurrent calls only hit the native channel once', () async {
-      var callCount = 0;
-      binaryMessenger.setMockMethodCallHandler(channel, (call) async {
-        expect(call.method, WebViewAssetBaseUrl.flutterAssetsBaseUrlMethod);
-        callCount++;
-        return 'file:///var/app/flutter_assets/';
-      });
+      final callCount = mockCountingHandler(result: 'file:///var/app/flutter_assets/');
       final webViewAssetBaseUrl = WebViewAssetBaseUrl();
 
       final results = await Future.wait([
@@ -87,18 +88,13 @@ void main() {
         webViewAssetBaseUrl.flutterAssetsBaseUrl(),
       ]);
 
-      expect(callCount, 1);
+      expect(callCount[0], 1);
       expect(results[0].toString(), 'file:///var/app/flutter_assets/');
       expect(results[1].toString(), 'file:///var/app/flutter_assets/');
     });
 
     test('returns null and does not retry when the native channel throws', () async {
-      var callCount = 0;
-      binaryMessenger.setMockMethodCallHandler(channel, (call) async {
-        expect(call.method, WebViewAssetBaseUrl.flutterAssetsBaseUrlMethod);
-        callCount++;
-        throw PlatformException(code: 'error');
-      });
+      final callCount = mockCountingHandler(error: PlatformException(code: 'error'));
       final webViewAssetBaseUrl = WebViewAssetBaseUrl();
 
       final first = await webViewAssetBaseUrl.flutterAssetsBaseUrl();
@@ -106,16 +102,11 @@ void main() {
 
       expect(first, isNull);
       expect(second, isNull);
-      expect(callCount, 1);
+      expect(callCount[0], 1);
     });
 
     test('caches a null result and only calls the native channel once', () async {
-      var callCount = 0;
-      binaryMessenger.setMockMethodCallHandler(channel, (call) async {
-        expect(call.method, WebViewAssetBaseUrl.flutterAssetsBaseUrlMethod);
-        callCount++;
-        return null;
-      });
+      final callCount = mockCountingHandler(result: null);
       final webViewAssetBaseUrl = WebViewAssetBaseUrl();
 
       final first = await webViewAssetBaseUrl.flutterAssetsBaseUrl();
@@ -123,7 +114,7 @@ void main() {
 
       expect(first, isNull);
       expect(second, isNull);
-      expect(callCount, 1);
+      expect(callCount[0], 1);
     });
   });
 }
