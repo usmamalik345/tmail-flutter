@@ -53,23 +53,20 @@ bool isProgrammaticDocumentLoad(NavigationAction action, WebUri? baseUrl) {
 
   final url = action.request.url?.toString();
   if (url == 'about:blank') return true;
-
-  if (baseUrl == null ||
-      url == null ||
-      action.request.url?.scheme != 'file' ||
-      action.hasGesture == true) {
+  if (baseUrl == null || url == null) return false;
+  if (action.request.url?.scheme != 'file' || action.hasGesture == true) {
     return false;
   }
 
-  String normalize(String path) => path
-      .replaceFirst('file:///private/var/', 'file:///var/')
-      .replaceFirst(RegExp(r'/+$'), '');
-
-  final navigatedUrl = normalize(url);
-  final cachedBaseUrl = normalize(baseUrl.toString());
+  final navigatedUrl = _normalizeFileUrl(url);
+  final cachedBaseUrl = _normalizeFileUrl(baseUrl.toString());
   return navigatedUrl == cachedBaseUrl ||
       navigatedUrl.startsWith('$cachedBaseUrl/');
 }
+
+String _normalizeFileUrl(String path) => path
+    .replaceFirst('file:///private/var/', 'file:///var/')
+    .replaceFirst(RegExp(r'/+$'), '');
 
 /// Enables `chrome://inspect` access to Android WebViews in debug builds
 /// only. Unlike iOS's per-instance `isInspectable` setting, Android WebView
