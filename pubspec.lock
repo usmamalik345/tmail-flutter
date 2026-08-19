@@ -502,8 +502,8 @@ packages:
     dependency: transitive
     description:
       path: "."
-      ref: master
-      resolved-ref: "0d2a6af30721bb88714eee42cc0d48cdfd8011a8"
+      ref: TF-4750-composer-baseurl-strict-match
+      resolved-ref: "0083c474957953a57ab5660c9fa4a6161483e075"
       url: "https://github.com/linagora/enough_html_editor.git"
     source: git
     version: "0.1.7"
@@ -2026,8 +2026,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: main
-      resolved-ref: fad6dc0102d07589c1cc6af97f1d8092749d1185
+      ref: TF-4750-update-enough_html_editor-dependency-reference
+      resolved-ref: f16ac2bf8b3b898135bb203ca07f0fef0d16ea5a
       url: "https://github.com/linagora/rich-text-composer.git"
     source: git
     version: "0.1.1"

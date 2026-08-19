@@ -1,5 +1,6 @@
 import 'package:core/presentation/utils/theme_utils.dart';
 import 'package:core/utils/build_utils.dart';
+import 'package:core/utils/html/webview_asset_base_url.dart';
 import 'package:core/utils/platform_info.dart';
 import 'package:flutter/widgets.dart';
 import 'package:tmail_ui_user/features/caching/config/hive_cache_config.dart';
@@ -27,6 +28,9 @@ Future<void> runTmailPreload() async {
   if (PlatformInfo.isMobile) {
     await workerManager.init(dynamicSpawning: true);
     workerManager.log = BuildUtils.isDebugMode;
+  }
+  if (PlatformInfo.isAndroid) {
+    await enableAndroidWebViewDebuggingInDebugMode();
   }
   await CozyIntegration.integrateCozy();
   await HiveCacheConfig.instance.initializeEncryptionKey();

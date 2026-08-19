@@ -81,7 +81,7 @@ dependencies:
   rich_text_composer:
     git:
       url: https://github.com/linagora/rich-text-composer.git
-      ref: main
+      ref: TF-4750-update-enough_html_editor-dependency-reference
 
   html_editor_enhanced:
     git:

@@ -1,6 +1,7 @@
 import 'package:core/utils/html/webview_asset_base_url.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -115,6 +116,87 @@ void main() {
       expect(first, isNull);
       expect(second, isNull);
       expect(callCount[0], 1);
+    });
+  });
+
+  group('isProgrammaticDocumentLoad', () {
+    NavigationAction navigationActionFor(
+      String? url, {
+      bool isForMainFrame = true,
+      bool? hasGesture,
+    }) {
+      return NavigationAction(
+        isForMainFrame: isForMainFrame,
+        hasGesture: hasGesture,
+        request: URLRequest(url: url != null ? WebUri(url) : null),
+      );
+    }
+
+    test('allows about:blank regardless of baseUrl', () {
+      final action = navigationActionFor('about:blank');
+
+      expect(isProgrammaticDocumentLoad(action, null), isTrue);
+    });
+
+    test('allows an exact match with the cached base url', () {
+      final baseUrl = WebUri('file:///var/app/flutter_assets/');
+      final action = navigationActionFor('file:///var/app/flutter_assets/');
+
+      expect(isProgrammaticDocumentLoad(action, baseUrl), isTrue);
+    });
+
+    test('allows when iOS reports /private/var/ but the cached url uses /var/', () {
+      final baseUrl = WebUri('file:///var/mobile/flutter_assets/');
+      final action = navigationActionFor('file:///private/var/mobile/flutter_assets/');
+
+      expect(isProgrammaticDocumentLoad(action, baseUrl), isTrue);
+    });
+
+    test('allows a trailing-slash mismatch', () {
+      final baseUrl = WebUri('file:///var/app/flutter_assets/');
+      final action = navigationActionFor('file:///var/app/flutter_assets');
+
+      expect(isProgrammaticDocumentLoad(action, baseUrl), isTrue);
+    });
+
+    test('denies a non-file scheme', () {
+      final baseUrl = WebUri('file:///var/app/flutter_assets/');
+      final action = navigationActionFor('https://example.com');
+
+      expect(isProgrammaticDocumentLoad(action, baseUrl), isFalse);
+    });
+
+    test('denies a matching path when the navigation has a user gesture', () {
+      final baseUrl = WebUri('file:///var/app/flutter_assets/');
+      final action = navigationActionFor(
+        'file:///var/app/flutter_assets/',
+        hasGesture: true,
+      );
+
+      expect(isProgrammaticDocumentLoad(action, baseUrl), isFalse);
+    });
+
+    test('denies an unrelated file path', () {
+      final baseUrl = WebUri('file:///var/app/flutter_assets/');
+      final action = navigationActionFor('file:///var/app/other/');
+
+      expect(isProgrammaticDocumentLoad(action, baseUrl), isFalse);
+    });
+
+    test('denies when not for the main frame', () {
+      final baseUrl = WebUri('file:///var/app/flutter_assets/');
+      final action = navigationActionFor(
+        'file:///var/app/flutter_assets/',
+        isForMainFrame: false,
+      );
+
+      expect(isProgrammaticDocumentLoad(action, baseUrl), isFalse);
+    });
+
+    test('denies when baseUrl is null', () {
+      final action = navigationActionFor('file:///var/app/flutter_assets/');
+
+      expect(isProgrammaticDocumentLoad(action, null), isFalse);
     });
   });
 }

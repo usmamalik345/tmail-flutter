@@ -100,6 +100,7 @@ class HtmlContentViewState extends State<HtmlContentViewer> with AutomaticKeepAl
       disableVerticalScroll: widget.disableScrolling,
       horizontalScrollBarEnabled: !widget.disableScrolling,
       isInspectable: kDebugMode,
+      allowFileAccessFromFileURLs: true,
     );
 
     _gestureRecognizers = {
@@ -378,8 +379,7 @@ class HtmlContentViewState extends State<HtmlContentViewer> with AutomaticKeepAl
       return NavigationActionPolicy.CANCEL;
     }
 
-    if (navigationAction.isForMainFrame &&
-        (url == 'about:blank' || url == _assetsBaseUrl?.toString())) {
+    if (isProgrammaticDocumentLoad(navigationAction, _assetsBaseUrl)) {
       return NavigationActionPolicy.ALLOW;
     }
 

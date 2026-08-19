@@ -82,8 +82,7 @@ class _IosHtmlContentViewerWidgetState extends State<IosHtmlContentViewerWidget>
       return NavigationActionPolicy.CANCEL;
     }
 
-    if (navigationAction.isForMainFrame &&
-        (url == 'about:blank' || url == _assetsBaseUrl?.toString())) {
+    if (isProgrammaticDocumentLoad(navigationAction, _assetsBaseUrl)) {
       return NavigationActionPolicy.ALLOW;
     }
 
