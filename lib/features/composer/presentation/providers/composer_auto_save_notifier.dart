@@ -95,7 +95,10 @@ class ComposerAutoSaveNotifier extends _$ComposerAutoSaveNotifier {
       (failure) => log('ComposerAutoSaveNotifier::clearCache: failure=${failure.runtimeType}'),
       (_) {
         if (!mounted) return;
-        state = state.copyWith(hasRecoverableSnapshot: false);
+        state = state.copyWith(
+          hasRecoverableSnapshot: false,
+          lastKnownHtmlContent: '',
+        );
         log('ComposerAutoSaveNotifier::clearCache: cleared');
       },
     );
