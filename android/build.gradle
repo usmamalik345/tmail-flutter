@@ -17,7 +17,7 @@ allprojects {
                         targetCompatibility JavaVersion.VERSION_17
                     }
 
-                    compileSdk 35
+                    compileSdk 36
                 }
             }
         }

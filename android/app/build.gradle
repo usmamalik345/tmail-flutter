@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 def flutterMinSdkVersion = localProperties.getProperty('flutter.minSdkVersion')
 if (flutterMinSdkVersion == null) {
-    flutterMinSdkVersion = '23'
+    flutterMinSdkVersion = '24'
 }
 
 def keystoreProperties = new Properties()
@@ -34,7 +34,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    compileSdk 35
+    compileSdk 36
     ndkVersion "28.2.13676358"
 
     sourceSets {
@@ -44,7 +44,7 @@ android {
     defaultConfig {
         applicationId "com.linagora.android.teammail"
         minSdkVersion flutterMinSdkVersion.toInteger()
-        targetSdkVersion 35
+        targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         // The number of method references in a .dex file cannot exceed 64K
@@ -58,8 +58,8 @@ android {
 
     compileOptions {
         coreLibraryDesugaringEnabled true
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     // Use key information file
