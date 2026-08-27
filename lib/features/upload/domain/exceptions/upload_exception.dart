@@ -6,3 +6,10 @@ class DataResponseIsNullException extends AppBaseException {
   @override
   String get exceptionName => 'DataResponseIsNullException';
 }
+
+class MissingAttachmentSourceException extends AppBaseException {
+  const MissingAttachmentSourceException([super.message]);
+
+  @override
+  String get exceptionName => 'MissingAttachmentSourceException';
+}
