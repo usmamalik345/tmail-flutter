@@ -116,7 +116,9 @@ class AIRAGPreferenceOption extends ServerPreferenceOption {
 
   @override
   bool isAvailable(PreferencesContext context) =>
-      context.serverOptions != null && context.isAICapabilitySupported;
+      context.serverOptions != null &&
+      context.isAICapabilitySupported &&
+      context.serverOptions?.aiRagEnabled != null;
 
   @override
   TMailServerSettingOptions applyTo(
