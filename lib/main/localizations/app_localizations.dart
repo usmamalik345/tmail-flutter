@@ -5641,21 +5641,21 @@ class AppLocalizations {
 
   String get rag {
     return Intl.message(
-      'Activate RAG indexation',
+      'Index my emails with AI',
       name: 'rag',
     );
   }
 
   String get ragSettingExplanation {
     return Intl.message(
-      'Enable RAG (Retrieval-Augmented Generation) indexation for enhanced email search and AI features.',
+      'Allow AI assistant to access and analyze your emails to contextualize its responses.',
       name: 'ragSettingExplanation',
     );
   }
 
   String get ragToggleDescription {
     return Intl.message(
-      'Activate RAG indexation',
+      'Index my emails with AI',
       name: 'ragToggleDescription',
     );
   }
