@@ -5639,6 +5639,27 @@ class AppLocalizations {
     );
   }
 
+  String get rag {
+    return Intl.message(
+      'Activate RAG indexation',
+      name: 'rag',
+    );
+  }
+
+  String get ragSettingExplanation {
+    return Intl.message(
+      'Enable RAG (Retrieval-Augmented Generation) indexation for enhanced email search and AI features.',
+      name: 'ragSettingExplanation',
+    );
+  }
+
+  String get ragToggleDescription {
+    return Intl.message(
+      'Activate RAG indexation',
+      name: 'ragToggleDescription',
+    );
+  }
+
   String get labelAs {
     return Intl.message(
       'Label as',
