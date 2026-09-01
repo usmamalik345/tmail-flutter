@@ -1818,8 +1818,19 @@ class ComposerController extends BaseController
     if (replyToRecipientState.value == PrefixRecipientState.disabled) {
       replyToRecipientState.value = PrefixRecipientState.enabled;
     }
-    listReplyToEmailAddress = listEmailAddress.toList();
+    listReplyToEmailAddress = _normalizeReplyToFromIdentity(listEmailAddress);
     updateStatusEmailSendButton();
+  }
+
+  List<EmailAddress> _normalizeReplyToFromIdentity(Set<EmailAddress> listEmailAddress) {
+    final identity = identitySelected.value;
+    final identityEmail = identity?.email;
+    if (identityEmail?.isNotEmpty == true &&
+        identityEmail != ownEmailAddress &&
+        listEmailAddress.every((address) => address.email == ownEmailAddress)) {
+      return [EmailAddress(identity!.name, identityEmail)];
+    }
+    return listEmailAddress.toList();
   }
 
   void _removeReplyToEmailAddressFromFormerIdentity(Set<EmailAddress> listEmailAddress) {

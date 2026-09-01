@@ -1830,6 +1830,27 @@ void main() {
           );
         },
       );
+
+      test(
+        'should store identity email as replyTo '
+        'when identity replyTo only contains account primary address',
+        () async {
+          const accountPrimaryEmail = 'alice@domain.tld';
+          final workIdentity = Identity(
+            id: IdentityId(Id('work')),
+            name: 'Work',
+            email: 'work@domain.tld',
+            replyTo: {EmailAddress(null, accountPrimaryEmail)},
+          );
+
+          await composerController?.selectIdentity(workIdentity);
+
+          expect(
+            composerController?.listReplyToEmailAddress,
+            [EmailAddress('Work', 'work@domain.tld')],
+          );
+        },
+      );
     });
 
     group('onLocalFileDropZoneListener test:', () {
