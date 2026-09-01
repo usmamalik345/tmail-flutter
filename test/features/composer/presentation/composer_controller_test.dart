@@ -56,6 +56,7 @@ import 'package:tmail_ui_user/features/composer/presentation/extensions/setup_em
 import 'package:tmail_ui_user/features/composer/presentation/extensions/setup_selected_identity_extension.dart';
 import 'package:tmail_ui_user/features/composer/presentation/manager/drive_attachment_handler.dart';
 import 'package:tmail_ui_user/features/composer/presentation/model/formatting_options_state.dart';
+import 'package:tmail_ui_user/features/composer/presentation/model/prefix_recipient_state.dart';
 import 'package:tmail_ui_user/features/composer/presentation/model/saved_composing_email.dart';
 import 'package:tmail_ui_user/features/composer/presentation/model/screen_display_mode.dart';
 import 'package:tmail_ui_user/features/composer/presentation/providers/composer_auto_save_notifier.dart';
@@ -1779,6 +1780,56 @@ void main() {
           }
         });
       }
+    });
+
+    group('selectIdentity reply-to sync test:', () {
+      const bobEmail = 'bob@domain.tld';
+      const aliceEmail = 'alice@domain.tld';
+      final bobReplyTo = EmailAddress('Bob', bobEmail);
+      final bobIdentity = Identity(
+        id: IdentityId(Id('bob')),
+        name: 'Bob',
+        email: bobEmail,
+        replyTo: {bobReplyTo},
+      );
+      final aliceIdentity = Identity(
+        id: IdentityId(Id('alice')),
+        name: 'Alice',
+        email: aliceEmail,
+        replyTo: {},
+      );
+
+      test(
+        'should apply replyTo from selected identity '
+        'when identity has replyTo configured',
+        () async {
+          await composerController?.selectIdentity(bobIdentity);
+
+          expect(
+            composerController?.listReplyToEmailAddress,
+            [bobReplyTo],
+          );
+          expect(
+            composerController?.replyToRecipientState.value,
+            PrefixRecipientState.enabled,
+          );
+        },
+      );
+
+      test(
+        'should clear former identity replyTo '
+        'when switching to identity without replyTo configured',
+        () async {
+          await composerController?.selectIdentity(bobIdentity);
+          await composerController?.selectIdentity(aliceIdentity);
+
+          expect(composerController?.listReplyToEmailAddress, isEmpty);
+          expect(
+            composerController?.replyToRecipientState.value,
+            PrefixRecipientState.disabled,
+          );
+        },
+      );
     });
 
     group('onLocalFileDropZoneListener test:', () {

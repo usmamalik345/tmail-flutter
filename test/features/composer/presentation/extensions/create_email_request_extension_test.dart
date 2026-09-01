@@ -418,6 +418,27 @@ void main() {
     });
 
     test(
+      'should return identity email with display name '
+      'when non-default identity replyTo only contains account primary address',
+    () {
+      const bobEmail = 'bob@domain.tld';
+      const aliceEmail = 'alice@domain.tld';
+      final identity = Identity(
+        name: 'Alice Smith',
+        email: aliceEmail,
+        replyTo: {EmailAddress(null, bobEmail)},
+      );
+      final request = buildRequest(
+        identity: identity,
+        ownEmailAddress: bobEmail,
+      );
+
+      final result = request.createReplyToRecipients();
+
+      expect(result, {EmailAddress('Alice Smith', aliceEmail)});
+    });
+
+    test(
       'should supplement identity name on replyTo address '
       'when identity replyTo items have no display name',
     () {

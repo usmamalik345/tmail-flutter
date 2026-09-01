@@ -1769,11 +1769,18 @@ class ComposerController extends BaseController
       if (formerIdentity.bcc?.isNotEmpty == true) {
         _removeBccEmailAddressFromFormerIdentity(formerIdentity.bcc!);
       }
+      if (formerIdentity.replyTo?.isNotEmpty == true) {
+        _removeReplyToEmailAddressFromFormerIdentity(formerIdentity.replyTo!);
+      }
       await _removeSignature();
     }
 
     if (newIdentity.bcc?.isNotEmpty == true) {
       _applyBccEmailAddressFromIdentity(newIdentity.bcc!);
+    }
+
+    if (newIdentity.replyTo?.isNotEmpty == true) {
+      _applyReplyToEmailAddressFromIdentity(newIdentity.replyTo!);
     }
 
     if (newIdentity.signatureAsString.isNotEmpty == true) {
@@ -1803,6 +1810,24 @@ class ComposerController extends BaseController
         .toList();
     if (listBccEmailAddress.isEmpty) {
       bccRecipientState.value = PrefixRecipientState.disabled;
+    }
+    updateStatusEmailSendButton();
+  }
+
+  void _applyReplyToEmailAddressFromIdentity(Set<EmailAddress> listEmailAddress) {
+    if (replyToRecipientState.value == PrefixRecipientState.disabled) {
+      replyToRecipientState.value = PrefixRecipientState.enabled;
+    }
+    listReplyToEmailAddress = listEmailAddress.toList();
+    updateStatusEmailSendButton();
+  }
+
+  void _removeReplyToEmailAddressFromFormerIdentity(Set<EmailAddress> listEmailAddress) {
+    listReplyToEmailAddress = listReplyToEmailAddress
+        .where((address) => !listEmailAddress.contains(address))
+        .toList();
+    if (listReplyToEmailAddress.isEmpty) {
+      replyToRecipientState.value = PrefixRecipientState.disabled;
     }
     updateStatusEmailSendButton();
   }
