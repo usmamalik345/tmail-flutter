@@ -1785,6 +1785,7 @@ void main() {
     group('selectIdentity reply-to sync test:', () {
       const bobEmail = 'bob@domain.tld';
       const aliceEmail = 'alice@domain.tld';
+      const accountPrimaryEmail = 'alice@domain.tld';
       final bobReplyTo = EmailAddress('Bob', bobEmail);
       final bobIdentity = Identity(
         id: IdentityId(Id('bob')),
@@ -1798,29 +1799,36 @@ void main() {
         email: aliceEmail,
         replyTo: {},
       );
+      final workIdentity = Identity(
+        id: IdentityId(Id('work')),
+        name: 'Work',
+        email: 'work@domain.tld',
+        replyTo: {EmailAddress(null, accountPrimaryEmail)},
+      );
 
       test(
-        'should apply replyTo from selected identity '
+        'should not copy identity replyTo into composer recipients '
         'when identity has replyTo configured',
         () async {
           await composerController?.selectIdentity(bobIdentity);
 
-          expect(
-            composerController?.listReplyToEmailAddress,
-            [bobReplyTo],
-          );
+          expect(composerController?.listReplyToEmailAddress, isEmpty);
           expect(
             composerController?.replyToRecipientState.value,
-            PrefixRecipientState.enabled,
+            PrefixRecipientState.disabled,
           );
         },
       );
 
       test(
-        'should clear former identity replyTo '
+        'should clear former identity replyTo from composer recipients '
         'when switching to identity without replyTo configured',
         () async {
-          await composerController?.selectIdentity(bobIdentity);
+          composerController?.identitySelected.value = bobIdentity;
+          composerController?.listReplyToEmailAddress = [bobReplyTo];
+          composerController?.replyToRecipientState.value =
+              PrefixRecipientState.enabled;
+
           await composerController?.selectIdentity(aliceIdentity);
 
           expect(composerController?.listReplyToEmailAddress, isEmpty);
@@ -1832,23 +1840,23 @@ void main() {
       );
 
       test(
-        'should store identity email as replyTo '
-        'when identity replyTo only contains account primary address',
+        'should clear account-primary replyTo left by former identity '
+        'when switching to identity with empty replyTo',
         () async {
-          const accountPrimaryEmail = 'alice@domain.tld';
-          final workIdentity = Identity(
-            id: IdentityId(Id('work')),
-            name: 'Work',
-            email: 'work@domain.tld',
-            replyTo: {EmailAddress(null, accountPrimaryEmail)},
-          );
+          final accountPrimaryReplyTo = EmailAddress(null, accountPrimaryEmail);
+          composerController?.identitySelected.value = workIdentity;
+          composerController?.listReplyToEmailAddress = [accountPrimaryReplyTo];
+          composerController?.replyToRecipientState.value =
+              PrefixRecipientState.enabled;
 
-          await composerController?.selectIdentity(workIdentity);
+          await composerController?.selectIdentity(aliceIdentity);
 
+          expect(composerController?.listReplyToEmailAddress, isEmpty);
           expect(
-            composerController?.listReplyToEmailAddress,
-            [EmailAddress('Work', 'work@domain.tld')],
+            composerController?.replyToRecipientState.value,
+            PrefixRecipientState.disabled,
           );
+          expect(composerController?.identitySelected.value, aliceIdentity);
         },
       );
     });

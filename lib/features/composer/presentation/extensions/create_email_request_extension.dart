@@ -53,10 +53,6 @@ extension CreateEmailRequestExtension on CreateEmailRequest {
     if (isNotReplyTo) return null;
 
     if (identity?.replyTo?.isNotEmpty == true) {
-      if (_shouldDefaultReplyToIdentityEmail()) {
-        return {EmailAddress(identity!.name, identity!.email)};
-      }
-
       return identity!.replyTo!.map((address) {
         if (address.name?.isNotEmpty == true) return address;
         return EmailAddress(identity!.name, address.email);
@@ -72,16 +68,6 @@ extension CreateEmailRequestExtension on CreateEmailRequest {
     return ownEmailAddress.isNotEmpty
       ? {EmailAddress(null, ownEmailAddress)}
       : null;
-  }
-
-  bool _shouldDefaultReplyToIdentityEmail() {
-    final identityEmail = identity?.email;
-    if (identityEmail?.isNotEmpty != true) return false;
-    if (identityEmail == ownEmailAddress) return false;
-
-    return identity!.replyTo!.every(
-      (address) => address.email == ownEmailAddress,
-    );
   }
 
   Set<EmailBodyPart> createAttachments() => attachments?.toEmailBodyPart() ?? {};

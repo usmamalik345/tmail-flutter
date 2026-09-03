@@ -1769,27 +1769,40 @@ class ComposerController extends BaseController
       if (formerIdentity.bcc?.isNotEmpty == true) {
         _removeBccEmailAddressFromFormerIdentity(formerIdentity.bcc!);
       }
-      if (formerIdentity.replyTo?.isNotEmpty == true) {
-        _removeReplyToEmailAddressFromFormerIdentity(formerIdentity.replyTo!);
-      }
+      _removeReplyToEmailAddressFromFormerIdentity(formerIdentity);
       await _removeSignature();
     }
+
+    // Identity-change callbacks are not awaited by the UI; a slower earlier
+    // selection must not resume and overwrite a newer selection.
+    if (!_isCurrentlySelectedIdentity(newIdentity)) return;
 
     if (newIdentity.bcc?.isNotEmpty == true) {
       _applyBccEmailAddressFromIdentity(newIdentity.bcc!);
     }
 
-    if (newIdentity.replyTo?.isNotEmpty == true) {
-      _applyReplyToEmailAddressFromIdentity(newIdentity.replyTo!);
-    }
+    // Do not copy identity reply-to into listReplyToEmailAddress. That list is
+    // for user-entered recipients; createReplyToRecipients already defaults from
+    // identity.replyTo / identity.email when the list is empty.
 
     if (newIdentity.signatureAsString.isNotEmpty == true) {
       await applySignature(newIdentity.signatureAsString.asSignatureHtml());
     }
 
+    if (!_isCurrentlySelectedIdentity(newIdentity)) return;
+
     if (PlatformInfo.isMobile) {
       await htmlEditorApi?.onDocumentChanged();
     }
+  }
+
+  bool _isCurrentlySelectedIdentity(Identity identity) {
+    final selected = identitySelected.value;
+    if (selected == null) return false;
+    if (identity.id != null && selected.id != null) {
+      return selected.id == identity.id;
+    }
+    return identical(selected, identity);
   }
 
   void _applyBccEmailAddressFromIdentity(Set<EmailAddress> listEmailAddress) {
@@ -1814,28 +1827,19 @@ class ComposerController extends BaseController
     updateStatusEmailSendButton();
   }
 
-  void _applyReplyToEmailAddressFromIdentity(Set<EmailAddress> listEmailAddress) {
-    if (replyToRecipientState.value == PrefixRecipientState.disabled) {
-      replyToRecipientState.value = PrefixRecipientState.enabled;
-    }
-    listReplyToEmailAddress = _normalizeReplyToFromIdentity(listEmailAddress);
-    updateStatusEmailSendButton();
-  }
+  void _removeReplyToEmailAddressFromFormerIdentity(Identity formerIdentity) {
+    final formerReplyTo = formerIdentity.replyTo;
+    if (formerReplyTo?.isNotEmpty != true) return;
 
-  List<EmailAddress> _normalizeReplyToFromIdentity(Set<EmailAddress> listEmailAddress) {
-    final identity = identitySelected.value;
-    final identityEmail = identity?.email;
-    if (identityEmail?.isNotEmpty == true &&
-        identityEmail != ownEmailAddress &&
-        listEmailAddress.every((address) => address.email == ownEmailAddress)) {
-      return [EmailAddress(identity!.name, identityEmail)];
-    }
-    return listEmailAddress.toList();
-  }
+    final emailsToRemove = formerReplyTo!
+        .map((address) => address.email)
+        .whereType<String>()
+        .where((email) => email.isNotEmpty)
+        .toSet();
+    if (emailsToRemove.isEmpty) return;
 
-  void _removeReplyToEmailAddressFromFormerIdentity(Set<EmailAddress> listEmailAddress) {
     listReplyToEmailAddress = listReplyToEmailAddress
-        .where((address) => !listEmailAddress.contains(address))
+        .where((address) => !emailsToRemove.contains(address.email))
         .toList();
     if (listReplyToEmailAddress.isEmpty) {
       replyToRecipientState.value = PrefixRecipientState.disabled;

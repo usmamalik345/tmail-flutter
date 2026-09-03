@@ -418,8 +418,8 @@ void main() {
     });
 
     test(
-      'should return identity email with display name '
-      'when non-default identity replyTo only contains account primary address',
+      'should preserve explicitly configured replyTo pointing at account primary '
+      'when identity replyTo is set to ownEmailAddress',
     () {
       const bobEmail = 'bob@domain.tld';
       const aliceEmail = 'alice@domain.tld';
@@ -435,7 +435,7 @@ void main() {
 
       final result = request.createReplyToRecipients();
 
-      expect(result, {EmailAddress('Alice Smith', aliceEmail)});
+      expect(result, {EmailAddress('Alice Smith', bobEmail)});
     });
 
     test(
